@@ -23,6 +23,9 @@ from .ui.elements.ParameterDisplayLabel import ParameterDisplayLabel
 from .ui.elements.DisplaySplitContainer import DisplaySplitContainer
 from .ui.elements.PerformanceIndicator import PerformanceIndicator
 
+from .hardware.AdafruitSwitch import AdafruitSwitch
+import board
+
 # Custom (local) display IDs. Just used locally here to reference header and footer display areas in the action definitions.
 DISPLAY_HEADER = 10
 DISPLAY_FOOTER = 20   
@@ -114,7 +117,10 @@ Config = {
                     }   
                 )
             ]
-        }
+        },
+
+        ## Additional ########################
+
     ],
 
     # Optional: Override brightness settings for all switch LEDs. Range: [0..1]
@@ -145,7 +151,7 @@ Config = {
 
     # Update interval, for updating the rig date (which triggers all other data to update when changed) (milliseconds)
     # and other displays if assigned. 200 is a good value.
-    #"updateInterval": 200,
+    #"updateInterval": 2000,
 
 ## Development Options ###################################################################################################################
 
@@ -219,6 +225,39 @@ Config["displays"] = [
         bounds = bounds.remove_from_bottom(SLOT_HEIGHT)
     ),
 
+    # Rig name
+    ParameterDisplayLabel(
+        name = "Rig Name",
+        bounds = bounds,   # Takes what is left over
+
+        layout = ParameterCondition(
+            mapping = KemperMappings.RIG_NAME,
+            mode = ParameterConditionModes.MODE_STRING_NOT_CONTAINS,
+            ref_value = "Q",
+
+            yes = {
+                "font": "/fonts/PTSans-NarrowBold-40.pcf",
+                "lineSpacing": 0.8,
+                "maxTextWidth": 220,
+                "backColor": Colors.BLACK
+            },
+
+            no =  {
+                "font": "/fonts/PTSans-NarrowBold-40.pcf",
+                "lineSpacing": 0.8,
+                "maxTextWidth": 220,
+                "backColor": Colors.ORANGE
+            }
+        ),
+
+        parameter = {
+            "mapping": KemperMappings.RIG_NAME,
+            "depends": KemperMappings.RIG_DATE,  # Only update this when the rig date changed (optional)
+            "textOffline": "Kemper Profiler (offline)",
+            "textReset": "Loading Rig..."
+        }
+    ),
+
     # Detail area (amp/cab etc.)
     ParameterDisplayLabel(
         name = "Rig Detail",
@@ -230,48 +269,6 @@ Config["displays"] = [
             "mapping": KemperMappings.AMP_NAME,
             "depends": KemperMappings.RIG_DATE   # Only update this when the rig date changed (optional)
         }        
-    ),
-
-    # Rig name
-    ParameterDisplayLabel(
-        name = "Rig Name",
-        bounds = bounds,   # Takes what is left over
-
-        #layout = ParameterCondition(
-        #    mapping = KemperMappings.RIG_NAME,
-        #    mode = ParameterConditionModes.MODE_STRING_CONTAINS,
-        #    ref_value = "Q",
-
-        #    yes = {
-        #        "font": "/fonts/A12.pcf",
-        #        "lineSpacing": 1.2,
-        #        "maxTextWidth": 100,
-        #        "textColor": Colors.BLUE,
-        #        "backColor": Colors.ORANGE,
-        #        "cornerRadius": 40,
-        #        "stroke": 4,
-        #    },
-
-        #    no = {
-        #        "font": "/fonts/PTSans-NarrowBold-40.pcf",
-         #       "lineSpacing": 0.8,
-         #       "maxTextWidth": 220
-        #    }
-        #),
-
-        layout = {
-            "font": "/fonts/PTSans-NarrowBold-40.pcf",
-            "lineSpacing": 0.8,
-            "maxTextWidth": 220,
-            "backColor": Colors.ORANGE
-        },
-
-        parameter = {
-            "mapping": KemperMappings.RIG_NAME,
-            "depends": KemperMappings.RIG_DATE,  # Only update this when the rig date changed (optional)
-            "textOffline": "Kemper Profiler (offline)",
-            "textReset": "Loading Rig..."
-        }
     ),
 
     # Statistics area (used internally, ID is fixed)
