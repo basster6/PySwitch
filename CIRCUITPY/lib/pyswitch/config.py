@@ -4,7 +4,7 @@
 #
 ##############################################################################################################################################
 
-from pyswitch_kemper.KemperMidiValueProvider import KemperMidiValueProvider
+from kemper import KemperMidiValueProvider
 
 Config = {
     

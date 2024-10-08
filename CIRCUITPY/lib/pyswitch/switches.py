@@ -9,13 +9,10 @@ from .core.misc.Defaults import Defaults
 from .hardware.hardware import SwitchDefinitions
 from .displays import DisplayIds
 
-from .core.controller.conditions.ParameterCondition import ParameterCondition, ParameterConditionModes
-from .core.controller.actions.base.PushButtonAction import PushButtonModes
+from .core.controller.ConditionTree import ParameterCondition, ParameterConditionModes
+from .core.controller.actions.actions import PushButtonModes
 
-from pyswitch_kemper.Kemper import Kemper
-from pyswitch_kemper.KemperMappings import KemperMappings
-from pyswitch_kemper.KemperActionDefinitions import KemperActionDefinitions
-from lib.pyswitch_kemper.KemperEffectSlot import KemperEffectSlot
+from kemper import Kemper, KemperMappings, KemperActionDefinitions, KemperEffectSlot
 
 
 # Layout used for the action labels (only used here locally)

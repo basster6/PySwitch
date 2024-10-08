@@ -5,12 +5,10 @@
 ##############################################################################################################################################
  
 from .core.misc.Colors import Colors
-from .core.controller.conditions.ParameterCondition import ParameterCondition, ParameterConditionModes
-from pyswitch_kemper.KemperMappings import KemperMappings
+from .core.controller.ConditionTree import ParameterCondition, ParameterConditionModes
+from kemper import KemperMappings
 
-from .ui.DisplayBounds import DisplayBounds
-from .ui.elements.ParameterDisplayLabel import ParameterDisplayLabel
-from .ui.elements.DisplaySplitContainer import DisplaySplitContainer
+from .ui.elements.elements import ParameterDisplayLabel, DisplaySplitContainer, DisplayBounds
 from .ui.StatisticalDisplays import StatisticalDisplays
 
 #############################################################################################################################################
