@@ -37,7 +37,7 @@ bounds = DisplayBounds(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT)
 Display = ParameterCondition(
     mapping = KemperMappings.TUNER_MODE_STATE,
     ref_value = 1,
-    mode = ParameterConditionModes.MODE_NOT_EQUAL,
+    mode = ParameterConditionModes.NOT_EQUAL,
 
     # Show normal display
     yes = HierarchicalDisplayElement(
@@ -81,7 +81,7 @@ Display = ParameterCondition(
                 bounds = bounds.bottom(DETAIL_HEIGHT),
                 layout = ParameterCondition(
                     mapping = KemperMappings.AMP_STATE,
-                    mode = ParameterConditionModes.MODE_GREATER,
+                    mode = ParameterConditionModes.GREATER,
                     ref_value = 0,
 
                     yes = {
