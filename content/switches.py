@@ -6,9 +6,9 @@
  
 from pyswitch.hardware.Hardware import Hardware
 
-from pyswitch.misc import Colors
-from pyswitch.controller.actions.actions import HoldAction, PushButtonAction
-from pyswitch.controller.actions.callbacks import BinaryParameterCallback, Callback
+#from pyswitch.misc import Colors
+#from pyswitch.controller.actions.actions import HoldAction, PushButtonAction
+from pyswitch.controller.actions.callbacks import Callback, BinaryParameterCallback
 
 from kemper import KemperActionDefinitions, KemperEffectSlot, KemperMappings, NRPN_VALUE
 from display import DISPLAY_HEADER_1, DISPLAY_HEADER_2, DISPLAY_FOOTER_1, DISPLAY_FOOTER_2
@@ -24,15 +24,15 @@ class _EnableCallback(Callback):
 
     def enabled(self, action):  
         if self.mapping.value == None:
-            return (action.id == 10)
-        
-        if action.id == 10:
-            return (self.mapping.value >= NRPN_VALUE(0.5))
-        if action.id == 20:
-            return (self.mapping.value < NRPN_VALUE(0.5))
+            return (action.id == 10)        
+        elif action.id == 30:
+            return (self.mapping.value >= NRPN_VALUE(0.66))
+        elif action.id == 20:
+            return (self.mapping.value >= NRPN_VALUE(0.33)) and (self.mapping.value < NRPN_VALUE(0.66))
+        elif action.id == 10:
+            return (self.mapping.value < NRPN_VALUE(0.33))
         
 _enable_callback = _EnableCallback()
-
 
 # Defines the switch assignments
 Switches = [
@@ -41,7 +41,9 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_1,
         "actions": [
-            KemperActionDefinitions.TUNER_MODE(
+            KemperActionDefinitions.BINARY_SWITCH(
+                mapping = KemperMappings.ROTARY_SPEED(KemperEffectSlot.EFFECT_SLOT_ID_A),           
+                text = "Fast",
                 id = 10,
                 display = DISPLAY_HEADER_1,
                 enable_callback = _enable_callback
@@ -52,7 +54,13 @@ Switches = [
                 id = 20,
                 display = DISPLAY_HEADER_1,
                 enable_callback = _enable_callback
-            )            
+            ),
+
+            KemperActionDefinitions.BANK_UP(
+                id = 30,
+                display = DISPLAY_HEADER_1,
+                enable_callback = _enable_callback
+            )
         ]
     },
 
@@ -60,45 +68,22 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_2,
         "actions": [
-            HoldAction({
-                "actions": [
-                    # Tap tempo / Tempo display
-                    KemperActionDefinitions.TAP_TEMPO(use_leds = False),
-                    KemperActionDefinitions.SHOW_TEMPO()    # Shows beats with the LED(s)
-                ],
-                "actionsHold": [
-                    # Enable delay (also on disable!)
-                    PushButtonAction({
-                        "callback": BinaryParameterCallback(
-                            mapping = KemperMappings.EFFECT_STATE(slot_id = KemperEffectSlot.EFFECT_SLOT_ID_DLY)                            
-                        ),
-                        "mode": PushButtonAction.ENABLE,
-                    }),
+            KemperActionDefinitions.TAP_TEMPO(
+                use_leds = False,
+                id = 10,
+                display = DISPLAY_HEADER_2,
+                enable_callback = _enable_callback
+            ),
+            KemperActionDefinitions.SHOW_TEMPO(
+                id = 20,
+                enable_callback = _enable_callback
+            ),
 
-                    # Freeze on/off
-                    PushButtonAction({
-                        "callback": BinaryParameterCallback(
-                            mapping = KemperMappings.FREEZE(KemperEffectSlot.EFFECT_SLOT_ID_DLY),
-                            text = "Tap|Frz",
-                            color = Colors.GREEN
-                        ),
-                        "mode": PushButtonAction.LATCH,
-                        "display": DISPLAY_HEADER_2,
-                        "useSwitchLeds": True
-                    }),                    
-
-                    # Set delay mix to 1:1 when enabled, remembering the old setting
-                    PushButtonAction({
-                        "callback": BinaryParameterCallback(
-                            mapping = KemperMappings.EFFECT_MIX(slot_id = KemperEffectSlot.EFFECT_SLOT_ID_DLY),
-                            value_enable = NRPN_VALUE(0.5),
-                            value_disable = "auto",
-                            comparison_mode = BinaryParameterCallback.EQUAL,
-                        ),
-                        "mode": PushButtonAction.LATCH
-                    })
-                ]
-            })
+            KemperActionDefinitions.BANK_DOWN(
+                id = 30,
+                display = DISPLAY_HEADER_2,
+                enable_callback = _enable_callback
+            )
         ]
     },
 
@@ -106,10 +91,28 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_A,
         "actions": [
-            KemperActionDefinitions.EFFECT_STATE(
-                slot_id = KemperEffectSlot.EFFECT_SLOT_ID_B,
-                display = DISPLAY_FOOTER_1
-            )
+            KemperActionDefinitions.TUNER_MODE(
+                id = 10,
+                display = DISPLAY_FOOTER_1,
+                enable_callback = _enable_callback
+            ),
+
+            KemperActionDefinitions.EFFECT_BUTTON(
+                num = 1,
+                id = 20,
+                display = DISPLAY_FOOTER_1,
+                enable_callback = _enable_callback
+            ),
+
+            KemperActionDefinitions.RIG_SELECT(
+                rig = 3,
+                bank = 4,
+                rig_off = 1,
+                bank_off = 1,
+                id = 30,
+                display = DISPLAY_FOOTER_1,
+                enable_callback = _enable_callback
+            )          
         ]
     },
     
@@ -117,13 +120,18 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_B,
         "actions": [
-            KemperActionDefinitions.RIG_SELECT(
-                rig = 1,
-                bank = 2,
-                rig_off = 3,
-                bank_off = 3,
-                display = DISPLAY_FOOTER_2
-            )
+            KemperActionDefinitions.MORPH_BUTTON(
+                id = 10,
+                display = DISPLAY_FOOTER_2,
+                enable_callback = _enable_callback
+            ),
+
+            KemperActionDefinitions.RIG_VOLUME_BOOST(
+                boost_volume = 0.55,
+                id = 20,
+                display = DISPLAY_FOOTER_2,
+                enable_callback = _enable_callback
+            )            
         ]
     },
 ]
