@@ -6,11 +6,11 @@
  
 from pyswitch.hardware.Hardware import Hardware
 
-from pyswitch.misc import Colors
-from pyswitch.controller.ConditionTree import ParameterCondition
-from pyswitch.controller.actions.actions import PushButtonAction, ParameterAction, HoldAction
+#from pyswitch.misc import Colors
+from pyswitch.controller.actions.actions import HoldAction
 
-from kemper import KemperActionDefinitions, KemperEffectSlot, KemperMappings
+from pyswitch.clients.kemper import KemperActionDefinitions, RIG_SELECT_DISPLAY_TARGET_RIG
+
 
 # Defines the switch assignments
 Switches = [
@@ -18,59 +18,79 @@ Switches = [
     # Switch 1
     {
         "assignment": Hardware.PA_MIDICAPTAIN_MINI_SWITCH_1,
-        "actions": KemperActionDefinitions.RIG_SELECT(
-            rig = 4,
-            color = Colors.YELLOW
-        )  
+        "actions": [
+            KemperActionDefinitions.RIG_SELECT(
+                rig = 4,
+                display_mode = RIG_SELECT_DISPLAY_TARGET_RIG
+            )
+        ]
     },
 
     # Switch 2
     {
         "assignment": Hardware.PA_MIDICAPTAIN_MINI_SWITCH_2,
-        "actions": KemperActionDefinitions.RIG_SELECT(
-            rig = 5,
-            color = Colors.YELLOW
-        )  
+        "actions": [
+            KemperActionDefinitions.RIG_SELECT(
+                rig = 5,
+                display_mode = RIG_SELECT_DISPLAY_TARGET_RIG
+            )
+        ]
     },
 
     # Switch 3
     {
         "assignment": Hardware.PA_MIDICAPTAIN_MINI_SWITCH_3,
-        "actions": HoldAction({
-            "actions": KemperActionDefinitions.EFFECT_BUTTON(
-                num = 2
-            ),
-            "actionsHold": KemperActionDefinitions.BANK_UP()
-        })            
+        "actions": [
+            HoldAction({
+                "actions": [
+                    KemperActionDefinitions.EFFECT_BUTTON(
+                        num = 2
+                    )
+                ],
+                "actionsHold": [
+                    KemperActionDefinitions.BANK_UP()
+                ]
+            })  
+        ]          
     },
 
     # Switch A
     {
         "assignment": Hardware.PA_MIDICAPTAIN_MINI_SWITCH_A,
-        "actions": KemperActionDefinitions.RIG_SELECT(
-            rig = 1,
-            color = Colors.YELLOW
-        )   
+        "actions": [
+            KemperActionDefinitions.RIG_SELECT(
+                rig = 1,
+                display_mode = RIG_SELECT_DISPLAY_TARGET_RIG
+            )
+        ]
     },
     
     # Switch B
     {
         "assignment": Hardware.PA_MIDICAPTAIN_MINI_SWITCH_B,
-        "actions": KemperActionDefinitions.RIG_SELECT(
-            rig = 2,
-            color = Colors.YELLOW
-        )   
+        "actions": [
+            KemperActionDefinitions.RIG_SELECT(
+                rig = 2,
+                display_mode = RIG_SELECT_DISPLAY_TARGET_RIG
+            )
+        ]
     },
 
     # Switch C
     {
         "assignment": Hardware.PA_MIDICAPTAIN_MINI_SWITCH_C,
-        "actions": HoldAction({
-            "actions": KemperActionDefinitions.RIG_SELECT(
-                rig = 3,
-                color = Colors.YELLOW
-            ),
-            "actionsHold": KemperActionDefinitions.BANK_DOWN()
-        })
+        "actions": [
+            HoldAction({
+                "actions": [
+                    KemperActionDefinitions.RIG_SELECT(
+                        rig = 3,
+                        display_mode = RIG_SELECT_DISPLAY_TARGET_RIG
+                    )
+                ],
+                "actionsHold": [
+                    KemperActionDefinitions.BANK_DOWN()            
+                ]
+            })
+        ]
     }
 ]
