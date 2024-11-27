@@ -43,12 +43,13 @@ class _AmpNameCallback(Callback):
         Callback.__init__(self)
         
         # This defines that the following mappings have to be listened to
-        self.mappings = [KemperMappings.AMP_NAME()]
+        self._mapping = KemperMappings.AMP_NAME()
+        self.register_mapping(self._mapping)        
 
     # This will be called for updating the label whenever the mappings defined above
     # have changed.
     def update_label(self, label):
-        amp_name = self.mappings[0].value
+        amp_name = self._mapping.value
 
         if amp_name:
             label.text = amp_name
