@@ -11,7 +11,7 @@ from pyswitch.controller.callbacks import Callback
 from pyswitch.controller.actions.actions import PushButtonAction, HoldAction
 
 from pyswitch.clients.kemper import KemperActionDefinitions, KemperEffectSlot, KemperMappings, RIG_SELECT_DISPLAY_TARGET_RIG
-from pyswitch.clients.kemper import RIG_SELECT_DISPLAY_CURRENT_RIG, NRPN_VALUE, RIG_SELECT_MORPH_NONE, RIG_SELECT_MORPH_TOGGLE
+from pyswitch.clients.kemper import RIG_SELECT_DISPLAY_CURRENT_RIG, NRPN_VALUE
 from display import DISPLAY_HEADER_1, DISPLAY_HEADER_2, DISPLAY_FOOTER_1, DISPLAY_FOOTER_2
 
 
@@ -20,7 +20,7 @@ class _EnableCallback(Callback):
         Callback.__init__(self)
         
         self.mapping = KemperMappings.RIG_VOLUME()
-        self.mappings = [self.mapping]
+        self.register_mapping(self.mapping)
 
     def enabled(self, action):  
         if self.mapping.value == None:
@@ -31,8 +31,6 @@ class _EnableCallback(Callback):
             return (self.mapping.value < NRPN_VALUE(0.5))
         
 _enable_callback = _EnableCallback()
-
-_morph_mode = RIG_SELECT_MORPH_TOGGLE
 
 # Defines the switch assignments
 Switches = [
@@ -46,7 +44,6 @@ Switches = [
                 rig = 1,                
                 display = DISPLAY_HEADER_1,
                 display_mode = RIG_SELECT_DISPLAY_CURRENT_RIG,
-                morph_mode = _morph_mode,
                 enable_callback = _enable_callback
             ),
             KemperActionDefinitions.RIG_SELECT(
@@ -54,7 +51,6 @@ Switches = [
                 rig = 1,                
                 display = DISPLAY_HEADER_1,
                 display_mode = RIG_SELECT_DISPLAY_TARGET_RIG,
-                morph_mode = _morph_mode,
                 enable_callback = _enable_callback
             )
         ]
@@ -70,7 +66,6 @@ Switches = [
                 rig_off = 5,
                 display = DISPLAY_HEADER_2,
                 display_mode = RIG_SELECT_DISPLAY_CURRENT_RIG,
-                morph_mode = _morph_mode,
                 enable_callback = _enable_callback
             ),
             KemperActionDefinitions.RIG_SELECT(
@@ -79,7 +74,6 @@ Switches = [
                 rig_off = 5,
                 display = DISPLAY_HEADER_2,
                 display_mode = RIG_SELECT_DISPLAY_TARGET_RIG,
-                morph_mode = _morph_mode,
                 enable_callback = _enable_callback
             )
         ]
@@ -97,7 +91,6 @@ Switches = [
                         bank = 4,
                         display = DISPLAY_FOOTER_1,
                         display_mode = RIG_SELECT_DISPLAY_CURRENT_RIG,
-                        morph_mode = _morph_mode,
                         enable_callback = _enable_callback
                     ),
                     KemperActionDefinitions.RIG_AND_BANK_SELECT(
@@ -106,7 +99,6 @@ Switches = [
                         bank = 4,
                         display = DISPLAY_FOOTER_1,
                         display_mode = RIG_SELECT_DISPLAY_TARGET_RIG,
-                        morph_mode = _morph_mode,
                         enable_callback = _enable_callback
                     )
                 ],
@@ -131,7 +123,6 @@ Switches = [
                         bank_off = 3,
                         display = DISPLAY_FOOTER_2,
                         display_mode = RIG_SELECT_DISPLAY_CURRENT_RIG,
-                        morph_mode = _morph_mode,
                         enable_callback = _enable_callback
                     ),
                     KemperActionDefinitions.RIG_AND_BANK_SELECT(
@@ -142,7 +133,6 @@ Switches = [
                         bank_off = 3,
                         display = DISPLAY_FOOTER_2,
                         display_mode = RIG_SELECT_DISPLAY_TARGET_RIG,
-                        morph_mode = _morph_mode,
                         enable_callback = _enable_callback
                     )
                 ],
