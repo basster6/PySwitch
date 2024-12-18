@@ -452,7 +452,7 @@ class TestKemperActionDefinitionsRigSelect(unittest.TestCase):
 
         action = KemperActionDefinitions.RIG_SELECT(
             display = display,
-            rig = 0,
+            rig = 1,
             display_mode = self,                   # Invalid value ;)
             id = 45, 
             use_leds = True, 
@@ -490,7 +490,7 @@ class TestKemperActionDefinitionsRigSelect(unittest.TestCase):
         switch = MockFootswitch(actions = [action])
         action.init(appl, switch)
         
-        mapping = mapping = action.callback._BinaryParameterCallback__mapping 
+        mapping = action.callback._BinaryParameterCallback__mapping 
         
         mapping.value = rig + 1   # Not matching
         action.update_displays()
@@ -573,14 +573,12 @@ class TestKemperActionDefinitionsRigSelect(unittest.TestCase):
         action.push()
         action.release()
 
-        # Select off rig
         self.assertEqual(len(appl.client.set_calls), 2)
         self.assertEqual(appl.client.set_calls[1], {
             "mapping": mapping_disable,
             "value": [1, 0]
         })
 
-        
         mapping.value = bank * NUM_RIGS_PER_BANK + 2  # Off rig
         action.update_displays()
         self.assertEqual(action.state, False)
