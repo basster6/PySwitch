@@ -8,10 +8,15 @@ from pyswitch.hardware.Hardware import Hardware
 
 from pyswitch.misc import Colors
 
-from pyswitch.clients.kemper import KemperActionDefinitions, KemperEffectSlot #, KemperMappings
+from pyswitch.clients.kemper import KemperEffectSlot #, KemperMappings
 from pyswitch.clients.kemper import RIG_SELECT_DISPLAY_TARGET_RIG #, RIG_SELECT_DISPLAY_CURRENT_RIG
 
 from display import DISPLAY_HEADER_1, DISPLAY_HEADER_2, DISPLAY_FOOTER_1, DISPLAY_FOOTER_2
+
+from pyswitch.clients.kemper.actions.morph import MORPH_DISPLAY
+from pyswitch.clients.kemper.actions.tuner import TUNER_MODE
+from pyswitch.clients.kemper.actions.effect_state import EFFECT_STATE
+from pyswitch.clients.kemper.actions.rig_select import RIG_SELECT
 
 
 # Defines the switch assignments
@@ -21,10 +26,10 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_1,
         "actions": [
-            KemperActionDefinitions.TUNER_MODE(
+            TUNER_MODE(
                 display = DISPLAY_HEADER_1
             ),
-            KemperActionDefinitions.MORPH_DISPLAY()        
+            MORPH_DISPLAY()        
         ]
     },
 
@@ -32,7 +37,7 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_2,
         "actions": [   
-            KemperActionDefinitions.EFFECT_STATE(
+            EFFECT_STATE(
                 slot_id = KemperEffectSlot.EFFECT_SLOT_ID_X,
                 display = DISPLAY_HEADER_2
             )
@@ -43,7 +48,7 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_A,
         "actions": [
-            KemperActionDefinitions.RIG_SELECT(
+            RIG_SELECT(
                 rig = 3,
                 rig_off = 1,
                 display = DISPLAY_FOOTER_1,
@@ -58,7 +63,7 @@ Switches = [
     {
         "assignment": Hardware.PA_MIDICAPTAIN_NANO_SWITCH_B,
         "actions": [
-            KemperActionDefinitions.RIG_SELECT(
+            RIG_SELECT(
                 rig = 2,
                 rig_off = 1,
                 display = DISPLAY_FOOTER_2,
