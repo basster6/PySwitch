@@ -3,9 +3,6 @@ class ActionParserTests extends FunctionParserTestBase {
     async getAvailableActions() {
         await this.init();
         
-        const config = new MockConfiguration("", "");
-        const parser = await config.parser(this.pyswitch);
-
         const basePath = "../";
         const that = this;
 
@@ -14,26 +11,38 @@ class ActionParserTests extends FunctionParserTestBase {
 
             // Load from buffer file
             async function() {
-                return await parser.getAvailableActions(basePath);
+                return JSON.parse(await Tools.fetch(basePath + "definitions/actions.json"));
             },
 
             // Generate from scratch
             async function() {
-                return await that.generateAvailableActions(basePath);
+                const extractor = new FunctionExtractor(that.pyswitch);
+        
+                return extractor.get({
+                    tocPath: basePath + "circuitpy/lib/pyswitch/clients/toc.php",
+                    subPath: "kemper/actions",
+                    targetPath: "pyswitch/clients/kemper/actions"
+                })
             }
         )
     }
 
-    /**
-     * Generates the actions definitions file from scratch
-     */
-    async generateAvailableActions(basePath) {
-        const extractor = new FunctionExtractor(this.pyswitch);
+    async getAvailableActionsMeta() {
+        const config = new MockConfiguration("", "");
+        const parser = await config.parser(this.pyswitch);
         
-        return extractor.get({
-            tocPath: basePath + "circuitpy/lib/pyswitch/clients/toc.php",
-            subPath: "kemper/actions",
-            targetPath: "pyswitch/clients/kemper/actions"
-        })
+        await this.checkDefinitions(
+            "actions-with-meta.json",
+
+            // Load from buffer file
+            async function() {
+                return JSON.parse(await Tools.fetch("data/definitions/actions-with-meta.json"));
+            },
+
+            // Generate from scratch
+            async function() {
+                return await parser.getAvailableActions("../");
+            }
+        )
     }
 }
