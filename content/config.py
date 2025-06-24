@@ -45,9 +45,6 @@ Config = {
 
     ## Development Options ###################################################################################################################
 
-    # Optional, shows the effect slot names in the display labels for EffectEnableAction
-    #"showEffectSlotNames": True,
-
     # Debug output is printed to serial console via USB. 
     # See https://learn.adafruit.com/welcome-to-circuitpython/advanced-serial-console-on-mac-and-linux 
 
