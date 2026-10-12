@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Captain Multimode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="led" aria-hidden="true"></span>
+    <h1>Captain Multimode</h1>
+    <span class="sub">MIDI Captain 매핑 에디터</span>
+  </div>
+  <div class="conn" id="conn">
+    <span class="pill" id="connState">장치 미연결</span>
+    <button id="btnConnect" class="primary">장치 드라이브 연결</button>
+  </div>
+</header>
+
+<div class="notice" id="notice" hidden></div>
+
+<main class="layout">
+  <!-- Left: device + modes -->
+  <aside class="panel side">
+    <section>
+      <h2>기기</h2>
+      <label class="field"><span>모델</span>
+        <select id="device"></select>
+      </label>
+    </section>
+
+    <section>
+      <div class="row-head"><h2>모드</h2><button id="btnAddMode" class="ghost small">+ 추가</button></div>
+      <ol id="modeList" class="modes"></ol>
+      <p class="hint">기본 모드는 부팅할 때 처음 켜지는 모드예요. 부팅 키를 누른 채 전원을 켜면 해당 모드로 바뀝니다.</p>
+      <div id="bootSelect" class="boot"></div>
+    </section>
+
+    <section>
+      <h2>장치</h2>
+      <div class="stack">
+        <button id="btnSave" class="primary" disabled>장치에 저장</button>
+        <button id="btnFirmware" disabled>펌웨어 설치·업데이트</button>
+        <div class="split">
+          <button id="btnExport" class="ghost">JSON 내보내기</button>
+          <label class="ghost button">JSON 가져오기<input type="file" id="fileImport" accept=".json" hidden></label>
+        </div>
+      </div>
+      <dl class="info" id="devInfo"></dl>
+      <details class="serial">
+        <summary>시리얼 (재시작·부트로더)</summary>
+        <div class="stack">
+          <button id="btnRestart" class="ghost">장치 재시작</button>
+          <button id="btnUf2" class="ghost">UF2 부트로더로 재시작</button>
+          <label class="ghost button">CircuitPython .uf2 굽기<input type="file" id="fileUf2" accept=".uf2" hidden></label>
+          <p class="hint">Chrome·Edge에서만 동작해요. 부트로더로 재시작하면 RPI-RP2 드라이브가 나타나고, .uf2 파일을 그 드라이브에 쓰면 CircuitPython이 교체됩니다.</p>
+        </div>
+      </details>
+    </section>
+  </aside>
+
+  <!-- Center: profile, layers, device face -->
+  <section class="panel center">
+    <div class="row-head">
+      <div class="title-edit">
+        <input id="profName" class="h-input" aria-label="프로필 이름">
+        <span class="tag" id="profTag"></span>
+      </div>
+      <div class="tabs" role="tablist" id="viewTabs">
+        <button role="tab" data-view="usage" aria-selected="true">사용법</button>
+        <button role="tab" data-view="keys">키 매핑</button>
+        <button role="tab" data-view="settings">프로필 설정</button>
+        <button role="tab" data-view="json">JSON</button>
+      </div>
+    </div>
+
+    <div id="view-usage" class="usage"></div>
+
+    <div id="view-keys" hidden>
+      <div class="layers" id="layers"></div>
+      <div class="layer-meta" id="layerMeta"></div>
+      <div class="face" id="face"></div>
+      <p class="hint">키를 눌러 편집하세요. 위쪽 레이어부터 조건이 맞는 첫 레이어가 키를 정의해요. 흐리게 보이는 키는 이 레이어에 정의가 없어서 다른 레이어 설정을 따릅니다.</p>
+    </div>
+
+    <div id="view-settings" hidden>
+      <div class="grid2">
+        <label class="field"><span>표시 태그</span><input id="setTag"></label>
+        <label class="field"><span>MIDI 채널 (1-16)</span><input id="setChannel" type="number" min="1" max="16"></label>
+        <label class="field"><span>길게 누르기 (ms)</span><input id="setHold" type="number" min="100" step="50"></label>
+        <label class="field"><span>더블 클릭 간격 (ms)</span><input id="setDouble" type="number" min="100" step="50"></label>
+        <label class="field check"><input id="setPower" type="checkbox"><span>전원/배터리 표시 (pw 변수)</span></label>
+      </div>
+      <label class="field"><span>상태 변수 <code>state</code> (JSON)</span><textarea id="setState" rows="5" class="mono"></textarea></label>
+      <label class="field"><span>상수 <code>consts</code> (JSON)</span><textarea id="setConsts" rows="6" class="mono"></textarea></label>
+      <label class="field"><span>파생 변수 <code>vars</code> (JSON, [이름, 식] 목록. 순서대로 계산)</span><textarea id="setVars" rows="4" class="mono"></textarea></label>
+      <div class="grid2">
+        <label class="field"><span>상태바 템플릿</span><input id="setBar" class="mono"></label>
+        <label class="field"><span>상태바 색</span><input id="setBarColor" class="mono"></label>
+      </div>
+      <label class="field"><span>메인 화면 템플릿 (기본값, 레이어별로 덮어쓰기 가능)</span><textarea id="setMain" rows="2" class="mono"></textarea></label>
+      <p class="err" id="settingsErr" hidden></p>
+    </div>
+
+    <div id="view-json" hidden>
+      <textarea id="jsonText" class="mono json" spellcheck="false" aria-label="프로필 JSON"></textarea>
+      <div class="split"><button id="btnApplyJson">JSON 적용</button><span class="err" id="jsonErr"></span></div>
+    </div>
+  </section>
+
+  <!-- Right: key editor -->
+  <aside class="panel editor" id="editor"></aside>
+</main>
+
+<footer class="foot">
+  <span>PySwitch (GPLv3, Thomas Weber) 기반 · multimode 확장 · Quad Cortex, Anagram, MIDI Captain은 각 제조사의 상표이며 이 도구는 제조사와 무관합니다.</span>
+  <span id="fwVersion"></span>
+</footer>
+
+<template id="tplOp">
+  <div class="op">
+    <select class="op-type" aria-label="동작 종류"></select>
+    <div class="op-fields"></div>
+    <div class="op-tools">
+      <button class="icon up" title="위로" aria-label="위로">↑</button>
+      <button class="icon down" title="아래로" aria-label="아래로">↓</button>
+      <button class="icon del" title="삭제" aria-label="삭제">✕</button>
+    </div>
+  </div>
+</template>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

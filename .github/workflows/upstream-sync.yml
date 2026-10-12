@@ -1,0 +1,76 @@
+# Weekly check for new upstream PySwitch commits (Tunetown/PySwitch main). If there are any, merges them
+# into a new branch on top of qc-local-mods, runs the tests and opens a pull request for review.
+name: Upstream sync
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"      # Mondays 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: qc-local-mods
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        id: fetch
+        run: |
+          git remote add upstream https://github.com/Tunetown/PySwitch.git
+          git fetch upstream main
+          count=$(git rev-list --count HEAD..upstream/main)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "New upstream commits: $count"
+
+      - name: Merge into a sync branch
+        if: steps.fetch.outputs.count != '0'
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="upstream-sync/$(date +%Y%m%d)"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          git switch -c "$branch"
+          if git merge --no-edit upstream/main; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            git diff --name-only --diff-filter=U > /tmp/conflicts.txt
+            git merge --abort
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.fetch.outputs.count != '0' && steps.merge.outputs.conflict == 'false'
+        with:
+          python-version: "3.12"
+
+      - name: Test
+        if: steps.fetch.outputs.count != '0' && steps.merge.outputs.conflict == 'false'
+        run: |
+          python -m unittest discover -s multimode/tests
+          python multimode/tools/mmtool.py validate
+
+      - name: Open pull request
+        if: steps.fetch.outputs.count != '0' && steps.merge.outputs.conflict == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push origin "${{ steps.merge.outputs.branch }}"
+          gh pr create --base qc-local-mods --head "${{ steps.merge.outputs.branch }}" \
+            --title "Upstream PySwitch: ${{ steps.fetch.outputs.count }} new commit(s)" \
+            --body "Merged Tunetown/PySwitch main into qc-local-mods. Multimode tests and profile validation passed. Please test on the device before merging."
+
+      - name: Report conflicts
+        if: steps.fetch.outputs.count != '0' && steps.merge.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Upstream PySwitch merge conflicts" \
+            --body "Merging Tunetown/PySwitch main (${{ steps.fetch.outputs.count }} new commits) into qc-local-mods conflicts in: $(tr '\n' ' ' < /tmp/conflicts.txt). Merge locally: git fetch origin && git merge origin/main"

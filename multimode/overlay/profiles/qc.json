@@ -1,0 +1,436 @@
+{
+  "schema": 1,
+  "name": "Quad Cortex mini",
+  "tag": "QC",
+  "channel": 1,
+  "holdMs": 600,
+  "doubleMs": 700,
+  "power": true,
+  "state": {
+    "gig": 0,
+    "mp": 2,
+    "qp": 2,
+    "tun": 0,
+    "ms": 0,
+    "sc": 0,
+    "gs": 0,
+    "pw": "USB",
+    "pws": -1
+  },
+  "consts": {
+    "FS": [
+      [
+        35,
+        36,
+        37,
+        38
+      ],
+      [
+        39,
+        40,
+        41,
+        42
+      ]
+    ],
+    "MODES": [
+      "PRE",
+      "SCN",
+      "STP"
+    ],
+    "MCOOL": [
+      "BLUE",
+      "TURQUOISE",
+      "LIGHT_BLUE"
+    ],
+    "MWARM": [
+      "ORANGE",
+      "RED",
+      "PURPLE"
+    ],
+    "PCOOL": [
+      [
+        "BLUE",
+        "TURQUOISE",
+        "LIGHT_BLUE",
+        "DARK_BLUE"
+      ],
+      [
+        "LIGHT_BLUE",
+        "TURQUOISE",
+        "BLUE",
+        "DARK_BLUE"
+      ]
+    ],
+    "PWARM": [
+      [
+        "PINK",
+        "ORANGE",
+        "DARK_YELLOW",
+        "YELLOW"
+      ],
+      [
+        "LIGHT_RED",
+        "RED",
+        "PURPLE",
+        "ORANGE"
+      ]
+    ]
+  },
+  "vars": [
+    [
+      "cur",
+      "qp if gs == 0 else 3 - qp"
+    ],
+    [
+      "opp",
+      "3 - cur"
+    ],
+    [
+      "pl",
+      "'BLUE' if gig else 'ORANGE'"
+    ],
+    [
+      "pr",
+      "'TURQUOISE' if gig else 'RED'"
+    ],
+    [
+      "sfx",
+      "'O' if gs else 'C'"
+    ]
+  ],
+  "screen": {
+    "bar": "PW: {pw}{' T+' if tun else ''}",
+    "barColor": "'RED' if tun else ('DARK_BLUE' if gig else 'DARK_YELLOW')"
+  },
+  "layers": [
+    {
+      "name": "Gig View",
+      "when": "gig",
+      "screen": {
+        "main": "GV {'Current' if gs == 0 else 'Opposite'} QP{qp}\n{MODES[ms]}"
+      },
+      "keys": {
+        "1": {
+          "label": "A{sfx}",
+          "color": "'GRAY' if gs else PCOOL[cur - 1][0]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][0]"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][0]"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 A, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
+            "long": "풋스위치 A, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+          }
+        },
+        "2": {
+          "label": "B{sfx}",
+          "color": "'GRAY' if gs else PCOOL[cur - 1][1]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][1]"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][1]"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 B, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
+            "long": "풋스위치 B, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+          }
+        },
+        "A": {
+          "label": "C{sfx}",
+          "color": "'GRAY' if gs else PCOOL[cur - 1][2]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][2]"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][2]"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 C, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
+            "long": "풋스위치 C, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+          }
+        },
+        "B": {
+          "label": "D{sfx}",
+          "color": "'GRAY' if gs else PCOOL[cur - 1][3]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][3]"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][3]"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 D, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
+            "long": "풋스위치 D, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+          }
+        }
+      },
+      "desc": "QC 화면이 Gig View일 때. 1·2·A·B가 QC 풋스위치 A·B·C·D를 그대로 대신해요."
+    },
+    {
+      "name": "Chain",
+      "when": "not gig",
+      "screen": {
+        "main": "CH\n{MODES[ms]} MP{mp} QP{qp}"
+      },
+      "keys": {
+        "1": {
+          "label": "A{mp}",
+          "color": "PWARM[mp - 1][0]",
+          "led": "['RED', 'RED', PWARM[mp - 1][0]] if tun else PWARM[mp - 1][0]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][0]"
+            }
+          ],
+          "long": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 45,
+              "val": "127 if tun else 0"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 A (내부 페이지 MP 기준)",
+            "long": "튜너 켜기/끄기 (CC45)"
+          }
+        },
+        "2": {
+          "label": "B{mp}",
+          "color": "PWARM[mp - 1][1]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][1]"
+            }
+          ],
+          "long": [
+            {
+              "set": "mp",
+              "to": "3 - mp"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 B (내부 페이지 MP 기준)",
+            "long": "내부 페이지 MP 1↔2 전환. QC에는 아무것도 보내지 않아요"
+          }
+        },
+        "A": {
+          "label": "C{mp}",
+          "color": "PWARM[mp - 1][2]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][2]"
+            }
+          ],
+          "long": [
+            {
+              "inc": "sc",
+              "by": -1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 C (내부 페이지 MP 기준)",
+            "long": "씬 −1 (CC43, H→A로 순환)"
+          }
+        },
+        "B": {
+          "label": "D{mp}",
+          "color": "PWARM[mp - 1][3]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][3]"
+            }
+          ],
+          "long": [
+            {
+              "inc": "sc",
+              "by": 1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            }
+          ],
+          "desc": {
+            "short": "풋스위치 D (내부 페이지 MP 기준)",
+            "long": "씬 +1 (CC43, A→H로 순환)"
+          }
+        }
+      },
+      "desc": "평소 모드. 1·2·A·B가 내부 페이지(MP) 기준으로 QC 풋스위치 A~D를 보내요."
+    },
+    {
+      "name": "Global",
+      "keys": {
+        "3": {
+          "label": "{'DBL?' if _pend == '3' else MODES[ms]}",
+          "color": "(MCOOL if gig else MWARM)[ms]",
+          "led": "[pl, pl, 'DARK_GRAY'] if qp == 1 else ['DARK_GRAY', pr, pr]",
+          "bright": 0.25,
+          "short": [
+            {
+              "inc": "ms",
+              "mod": 3
+            },
+            {
+              "cc": 47,
+              "val": "ms"
+            }
+          ],
+          "double": [
+            {
+              "toggle": "gs"
+            }
+          ],
+          "long": [
+            {
+              "set": "qp",
+              "to": "3 - qp"
+            },
+            {
+              "cc": 64,
+              "val": "127 if qp == 2 else 0"
+            }
+          ],
+          "desc": {
+            "short": "QC 모드 순환 PRE→SCN→STP (CC47). 더블클릭 대기 때문에 0.7초 뒤 실행",
+            "double": "Gig View에서 짧게/길게 누르기의 현재·반대 페이지를 서로 뒤집기 (라벨 끝 C↔O)",
+            "long": "QC 풋스위치 페이지 I↔II 전환 (CC64). LED 왼쪽=I, 오른쪽=II"
+          }
+        },
+        "C": {
+          "label": "TAP",
+          "color": "'GREEN' if gig else 'TURQUOISE'",
+          "short": [
+            {
+              "cc": 44,
+              "val": 127
+            }
+          ],
+          "long": [
+            {
+              "toggle": "gig"
+            },
+            {
+              "cc": 46,
+              "val": "127 if gig else 0"
+            }
+          ],
+          "desc": {
+            "short": "탭 템포 (CC44)",
+            "long": "Gig View 켜기/끄기 (CC46)"
+          }
+        },
+        "4": {
+          "label": "TUN",
+          "color": "'RED' if tun else 'DARK_PURPLE'",
+          "short": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 45,
+              "val": "127 if tun else 0"
+            }
+          ],
+          "desc": {
+            "short": "튜너 켜기/끄기 (MIDI Captain 10)"
+          }
+        },
+        "D": {
+          "label": "MP{mp}",
+          "color": "PWARM[mp - 1][0]",
+          "short": [
+            {
+              "set": "mp",
+              "to": "3 - mp"
+            }
+          ],
+          "desc": {
+            "short": "내부 페이지 MP 1↔2 (MIDI Captain 10)"
+          }
+        },
+        "Up": {
+          "label": "SC+",
+          "color": "LIGHT_GREEN",
+          "short": [
+            {
+              "inc": "sc",
+              "by": 1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            }
+          ],
+          "desc": {
+            "short": "씬 +1 (MIDI Captain 10)"
+          }
+        },
+        "Down": {
+          "label": "SC-",
+          "color": "LIGHT_GREEN",
+          "short": [
+            {
+              "inc": "sc",
+              "by": -1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            }
+          ],
+          "desc": {
+            "short": "씬 −1 (MIDI Captain 10)"
+          }
+        }
+      },
+      "desc": "모든 모드에서 같은 동작을 하는 키."
+    }
+  ],
+  "desc": "Quad Cortex mini 제어. 평소엔 Chain 모드, C를 길게 누르면 Gig View 모드."
+}

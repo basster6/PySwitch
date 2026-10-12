@@ -1,0 +1,60 @@
+# Tests the multimode engine and profiles, builds the web editor including the firmware files,
+# and publishes it to GitHub Pages.
+name: Multimode editor
+
+on:
+  push:
+    branches: [qc-local-mods]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # for the version (git describe)
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Multimode tests
+        run: python -m unittest discover -s multimode/tests -v
+
+      - name: Validate profiles
+        run: python multimode/tools/mmtool.py validate
+
+      - name: PySwitch tests (upstream suite, informational)
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/project
+          ln -s "$PWD/content/lib" /tmp/project/lib
+          ln -s "$PWD/test" /tmp/project/test
+          cd /tmp/project && python -m unittest discover -t /tmp/project -s /tmp/project/test/pyswitch
+
+      - name: Build site
+        run: python multimode/tools/mmtool.py site --out _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

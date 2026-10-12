@@ -1,0 +1,6 @@
+{
+  "device": "mini6",
+  "modes": ["qc", "anagram"],
+  "default": "qc",
+  "bootSelect": { "2": "qc", "A": "anagram" }
+}

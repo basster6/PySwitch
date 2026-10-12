@@ -1,0 +1,82 @@
+# Multimode
+
+PySwitch 위에서 도는 **데이터 기반 멀티 모드 매핑** 확장입니다. 스위치 동작을 파이썬 코드 대신 JSON 프로필로 정의하고, 웹 에디터에서 편집해서 MIDI Captain에 바로 저장합니다.
+
+- 지원 기기: MIDI Captain Nano 4, Mini 6, 10 (PySwitch가 지원하는 기기 전부)
+- 기본 프로필: Quad Cortex mini (`qc`), Anagram (`anagram`)
+- 에디터: `multimode/web` (GitHub Pages로 배포)
+
+## 구조
+
+```
+content/                 업스트림 PySwitch (boot.py, config.py, communication.py, fonts, lib/pyswitch)
+multimode/overlay/       장치 루트에 덮어쓰는 파일
+  code.py, display.py, inputs.py, communication.py
+  lib/multimode/         엔진 (engine.py, devices.py, setup.py, store.py, power.py, bootselect.py)
+  profiles/              modes.json + 프로필 JSON
+multimode/web/           웹 에디터 (정적 사이트)
+multimode/tools/         mmtool.py (빌드·검증·배포), sim.py (PC 시뮬레이터)
+multimode/tests/         프로필 동작 테스트
+```
+
+장치 이미지 = `content/`의 업스트림 파일 + `multimode/overlay`. 업스트림 파일은 건드리지 않으므로 업스트림 머지가 쉽습니다.
+
+## 장치에서 쓰기
+
+| 전원 켤 때 누르고 있는 키 | 결과 |
+|---|---|
+| 1 | USB 드라이브 연결 (설정·펌웨어 변경) |
+| `bootSelect`에 지정한 키 (기본: 2 = QC, A = Anagram) | 해당 모드로 시작하고 기억 |
+| 없음 | 마지막 모드로 시작 |
+
+프로필 안에서 `{"mode": "next"}` 동작으로도 모드를 바꿀 수 있습니다 (기본 Anagram 프로필: C 더블클릭).
+
+## 웹 에디터
+
+1. 1번 스위치를 누른 채 장치를 켜서 드라이브(MIDICAPTAIN 또는 CIRCUITPY)를 연결합니다.
+2. 에디터에서 **장치 드라이브 연결** → 드라이브 최상위 폴더를 선택합니다. (데스크톱 Chrome·Edge)
+3. 처음이면 **펌웨어 설치·업데이트**, 그다음 매핑을 편집하고 **장치에 저장**.
+4. 스위치를 누르지 않고 장치를 다시 켭니다.
+
+로컬에서 띄우기: `python3 multimode/tools/mmtool.py serve` → http://localhost:8765
+
+## 명령줄 도구
+
+```
+python3 multimode/tools/mmtool.py validate     # 모든 기기 × 모든 프로필 검증 (실제 엔진으로 모든 동작 실행)
+python3 multimode/tools/mmtool.py deploy       # 검증 → 장치 백업 → 바뀐 파일만 복사 (--dry-run 가능)
+python3 multimode/tools/mmtool.py backup | restore DIR
+python3 -m unittest discover -s multimode/tests
+```
+
+## 프로필 형식
+
+```jsonc
+{
+  "name": "Quad Cortex mini", "tag": "QC",
+  "channel": 1, "holdMs": 600, "doubleMs": 700, "power": true,
+  "state":  { "gig": 0, "qp": 2 },                 // 상태 변수 (초깃값)
+  "consts": { "FS": [[35,36,37,38],[39,40,41,42]] },
+  "vars":   [["opp", "3 - qp"]],                   // 파생 변수, 순서대로 계산
+  "screen": { "bar": "PW: {pw}", "barColor": "DARK_YELLOW", "main": "..." },
+  "layers": [                                      // 위에서부터 조건(when)이 맞는 첫 레이어가 키를 정의
+    { "name": "Gig View", "when": "gig", "screen": { "main": "GV QP{qp}" },
+      "keys": {
+        "1": { "label": "A{qp}", "color": "BLUE", "led": ["BLUE", "BLUE", "GRAY"],
+               "short":  [{ "cc": "FS[qp - 1][0]" }],
+               "long":   [{ "cc": "FS[opp - 1][0]" }],
+               "double": [{ "toggle": "gig" }, { "cc": 46, "val": "127 if gig else 0" }],
+               "desc":   { "short": "풋스위치 A (현재 페이지)" } } } }
+  ]
+}
+```
+
+- 값은 숫자 그대로이거나 **파이썬 식** 문자열입니다. 라벨은 `{식}` 템플릿입니다.
+- 동작: `cc`/`val`, `pc`, `note`/`vel`, `raw`, `set`/`to`, `toggle`, `inc`/`by`/`mod`/`lo`/`min`/`max`, `if`/`then`/`else`, `mode` (`next`, `prev`, 이름). 모든 MIDI 동작에 `ch`(1-16)로 채널 지정 가능.
+- 색: 이름(`BLUE` 등 PySwitch 색), `#rrggbb`, `[r,g,b]`, 또는 그런 값을 내는 식. `led`에 3개 목록을 주면 LED 3칸을 각각 칠합니다.
+- `double`을 정의한 키는 짧게 누르기가 `doubleMs`만큼 늦게 실행됩니다. 대기 중에는 `_pend`가 그 키 이름입니다.
+- 식은 부팅할 때 한꺼번에 함수로 컴파일됩니다 (CircuitPython 7에는 `compile()`이 없고, `eval()`은 매번 ~15ms 걸림). 실측: 프로필 로드 185ms, 전체 화면 갱신 24ms, RAM 15KB.
+
+## 라이선스
+
+PySwitch(© Thomas Weber)의 GPLv3를 따릅니다. 이 폴더의 파일은 qc-local-mods 포크에서 추가했습니다 (2026, basster6). Adafruit 라이브러리와 폰트는 각자의 라이선스(`content/` 참고)를 따릅니다. Quad Cortex(Neural DSP), Anagram, MIDI Captain(Paint Audio)은 각 소유자의 상표이며, 이 프로젝트는 제조사와 관계가 없습니다.

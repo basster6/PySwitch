@@ -1,0 +1,416 @@
+{
+  "schema": 1,
+  "name": "Anagram",
+  "tag": "ANA",
+  "channel": 1,
+  "holdMs": 600,
+  "doubleMs": 500,
+  "power": true,
+  "state": {
+    "lp": 0,
+    "am": 1,
+    "fa": 0,
+    "fb": 0,
+    "fc": 0,
+    "tun": 0,
+    "msg": "",
+    "pw": "USB",
+    "pws": -1
+  },
+  "consts": {
+    "AM": [
+      "PRE",
+      "STM",
+      "SCN"
+    ],
+    "AMC": [
+      "ORANGE",
+      "GREEN",
+      "TURQUOISE"
+    ]
+  },
+  "vars": [],
+  "screen": {
+    "bar": "ANA PW: {pw}{' T+' if tun else ''}",
+    "barColor": "'RED' if tun else ('DARK_PURPLE' if lp else 'DARK_GREEN')"
+  },
+  "layers": [
+    {
+      "name": "Looper",
+      "when": "lp",
+      "screen": {
+        "main": "LOOPER\n{msg}"
+      },
+      "keys": {
+        "1": {
+          "label": "REC",
+          "color": "RED",
+          "short": [
+            {
+              "cc": 112
+            },
+            {
+              "set": "msg",
+              "to": "'Rec/Dub'"
+            }
+          ],
+          "long": [
+            {
+              "cc": 113
+            },
+            {
+              "set": "msg",
+              "to": "'Clear'"
+            }
+          ],
+          "desc": {
+            "short": "녹음/더빙 (CC112)",
+            "long": "현재 슬롯 지우기 (CC113)"
+          }
+        },
+        "2": {
+          "label": "PLAY",
+          "color": "GREEN",
+          "short": [
+            {
+              "cc": 111
+            },
+            {
+              "set": "msg",
+              "to": "'Play/Stop'"
+            }
+          ],
+          "desc": {
+            "short": "재생/정지 (CC111)"
+          }
+        },
+        "3": {
+          "label": "UNDO",
+          "color": "ORANGE",
+          "short": [
+            {
+              "cc": 114
+            },
+            {
+              "set": "msg",
+              "to": "'Undo'"
+            }
+          ],
+          "long": [
+            {
+              "cc": 115
+            },
+            {
+              "set": "msg",
+              "to": "'Redo'"
+            }
+          ],
+          "desc": {
+            "short": "언두 (CC114)",
+            "long": "리두 (CC115)"
+          }
+        },
+        "A": {
+          "label": "SL-",
+          "color": "LIGHT_BLUE",
+          "short": [
+            {
+              "cc": 118
+            },
+            {
+              "set": "msg",
+              "to": "'Slot -'"
+            }
+          ],
+          "desc": {
+            "short": "이전 루퍼 슬롯 (CC118)"
+          }
+        },
+        "B": {
+          "label": "SL+",
+          "color": "LIGHT_BLUE",
+          "short": [
+            {
+              "cc": 117
+            },
+            {
+              "set": "msg",
+              "to": "'Slot +'"
+            }
+          ],
+          "desc": {
+            "short": "다음 루퍼 슬롯 (CC117)"
+          }
+        },
+        "C": {
+          "label": "EXIT",
+          "color": "PURPLE",
+          "short": [
+            {
+              "set": "lp",
+              "to": 0
+            },
+            {
+              "cc": 110
+            },
+            {
+              "set": "msg",
+              "to": "''"
+            }
+          ],
+          "desc": {
+            "short": "루퍼 나가기 (CC110)"
+          }
+        }
+      },
+      "desc": "루퍼 화면일 때. C로 빠져나와요."
+    },
+    {
+      "name": "Play",
+      "when": "not lp",
+      "screen": {
+        "main": "{AM[am - 1]}\n{msg}"
+      },
+      "keys": {
+        "1": {
+          "label": "FA{'+' if fa else '-'}",
+          "color": "'GREEN' if fa else 'DARK_GREEN'",
+          "short": [
+            {
+              "toggle": "fa"
+            },
+            {
+              "cc": 17,
+              "val": "127 if fa else 0"
+            }
+          ],
+          "long": [
+            {
+              "cc": 106
+            },
+            {
+              "set": "msg",
+              "to": "'Preset -'"
+            }
+          ],
+          "desc": {
+            "short": "Foot A 바인딩 켜기/끄기 (CC17)",
+            "long": "이전 프리셋 (CC106)"
+          }
+        },
+        "2": {
+          "label": "FB{'+' if fb else '-'}",
+          "color": "'GREEN' if fb else 'DARK_GREEN'",
+          "short": [
+            {
+              "toggle": "fb"
+            },
+            {
+              "cc": 18,
+              "val": "127 if fb else 0"
+            }
+          ],
+          "long": [
+            {
+              "cc": 105
+            },
+            {
+              "set": "msg",
+              "to": "'Preset +'"
+            }
+          ],
+          "desc": {
+            "short": "Foot B 바인딩 켜기/끄기 (CC18)",
+            "long": "다음 프리셋 (CC105)"
+          }
+        },
+        "3": {
+          "label": "FC{'+' if fc else '-'}",
+          "color": "'GREEN' if fc else 'DARK_GREEN'",
+          "short": [
+            {
+              "toggle": "fc"
+            },
+            {
+              "cc": 19,
+              "val": "127 if fc else 0"
+            }
+          ],
+          "long": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 86
+            }
+          ],
+          "desc": {
+            "short": "Foot C 바인딩 켜기/끄기 (CC19)",
+            "long": "튜너 열기/닫기 (CC86)"
+          }
+        },
+        "A": {
+          "label": "SC-",
+          "color": "TURQUOISE",
+          "short": [
+            {
+              "cc": 109
+            },
+            {
+              "set": "msg",
+              "to": "'Scene -'"
+            }
+          ],
+          "long": [
+            {
+              "cc": 104
+            },
+            {
+              "set": "msg",
+              "to": "'Bank -'"
+            }
+          ],
+          "desc": {
+            "short": "이전 씬 (CC109)",
+            "long": "이전 뱅크 (CC104)"
+          }
+        },
+        "B": {
+          "label": "SC+",
+          "color": "TURQUOISE",
+          "short": [
+            {
+              "cc": 108
+            },
+            {
+              "set": "msg",
+              "to": "'Scene +'"
+            }
+          ],
+          "long": [
+            {
+              "cc": 103
+            },
+            {
+              "set": "msg",
+              "to": "'Bank +'"
+            }
+          ],
+          "desc": {
+            "short": "다음 씬 (CC108)",
+            "long": "다음 뱅크 (CC103)"
+          }
+        },
+        "C": {
+          "label": "{'DBL?' if _pend == 'C' else AM[am - 1]}",
+          "color": "AMC[am - 1]",
+          "short": [
+            {
+              "inc": "am",
+              "by": 1,
+              "mod": 3,
+              "lo": 1
+            },
+            {
+              "cc": 85,
+              "val": "am"
+            }
+          ],
+          "double": [
+            {
+              "mode": "next"
+            }
+          ],
+          "long": [
+            {
+              "set": "lp",
+              "to": 1
+            },
+            {
+              "cc": 110
+            },
+            {
+              "set": "msg",
+              "to": "''"
+            }
+          ],
+          "desc": {
+            "short": "Anagram 모드 순환 Preset→Stomp→Scene (CC85). 더블클릭 대기 때문에 0.5초 뒤 실행",
+            "double": "다음 컨트롤러 모드(QC)로 전환하고 재시작",
+            "long": "루퍼 화면 열기 (CC110)"
+          }
+        }
+      },
+      "desc": "평소 모드. 위쪽 3개는 Stomp 풋 바인딩, 아래는 씬/뱅크."
+    },
+    {
+      "name": "MIDI Captain 10 extras",
+      "keys": {
+        "4": {
+          "label": "TUN",
+          "color": "'RED' if tun else 'DARK_PURPLE'",
+          "short": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 86
+            }
+          ],
+          "desc": {
+            "short": "튜너 열기/닫기"
+          }
+        },
+        "D": {
+          "label": "LOOP",
+          "color": "PURPLE",
+          "short": [
+            {
+              "toggle": "lp"
+            },
+            {
+              "cc": 110
+            }
+          ],
+          "desc": {
+            "short": "루퍼 열기/닫기"
+          }
+        },
+        "Up": {
+          "label": "PR+",
+          "color": "ORANGE",
+          "short": [
+            {
+              "cc": 105
+            },
+            {
+              "set": "msg",
+              "to": "'Preset +'"
+            }
+          ],
+          "desc": {
+            "short": "다음 프리셋"
+          }
+        },
+        "Down": {
+          "label": "PR-",
+          "color": "ORANGE",
+          "short": [
+            {
+              "cc": 106
+            },
+            {
+              "set": "msg",
+              "to": "'Preset -'"
+            }
+          ],
+          "desc": {
+            "short": "이전 프리셋"
+          }
+        }
+      },
+      "desc": "MIDI Captain 10에만 있는 키."
+    }
+  ],
+  "desc": "Anagram 베이스 멀티이펙터 제어. 평소엔 Play 레이어, C를 길게 누르면 루퍼."
+}
