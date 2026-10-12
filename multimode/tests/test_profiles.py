@@ -157,6 +157,25 @@ class TestAnagram(unittest.TestCase):
         self.assertTrue(s.reloaded)
 
 
+class TestBattery(unittest.TestCase):
+
+    def test_battery_text(self):
+        from multimode.power import battery_text, charge_percent
+
+        # USB power: nothing at the monitor pin (measured 0.016V on a Mini 6)
+        self.assertEqual(battery_text("USB/DC", 0.016, None), ("USB/DC", -1, -1))
+
+        # Not calibrated: show the pin voltage precisely enough to calibrate with it
+        self.assertEqual(battery_text("BAT", 0.9123, None)[0], "BAT 0.912V")
+
+        # Calibrated: full battery reads 0.912V at the pin
+        cal = { "fullPin": 0.912, "fullVolts": 4.2 }
+        self.assertEqual(battery_text("BAT", 0.912, cal), ("BAT 4.20V 100%", 4.2, 100))
+        self.assertEqual(battery_text("BAT", 0.912 * 3.8 / 4.2, cal)[0], "BAT 3.80V 50%")
+        self.assertEqual(charge_percent(3.0), 0)
+        self.assertEqual(charge_percent(3.75), 43)
+
+
 class TestDevices(unittest.TestCase):
 
     def test_keys_missing_on_small_devices_are_ignored(self):

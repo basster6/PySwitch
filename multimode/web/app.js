@@ -664,6 +664,9 @@ function renderSide() {
   $("#btnFirmware").disabled = !S.dir || !S.manifest || S.kind !== "multimode" || S.fwChecking;
   $("#btnFirmware").classList.toggle("primary", S.fwDiff > 0);
 
+  const bat = S.modes.battery?.fullPin;
+  if (document.activeElement !== $("#batFull")) $("#batFull").value = bat ?? "";
+
   const info = [];
   if (S.boot) info.push([t("side.os"), S.boot.replace("Adafruit CircuitPython ", "CircuitPython ")]);
   if (S.dir) info.push([t("side.installed"), S.installed || t("side.none")]);
@@ -1021,6 +1024,12 @@ function bind() {
   $("#btnRestart").addEventListener("click", restart);
   $("#btnUf2").addEventListener("click", enterUf2);
   $("#fileUf2").addEventListener("change", e => { flashUf2(e.target.files[0]); e.target.value = ""; });
+  $("#batFull").addEventListener("change", e => {
+    const v = parseFloat(e.target.value);
+    if (v >= 0.2 && v <= 3.3) S.modes.battery = { fullPin: Math.round(v * 1000) / 1000, fullVolts: S.modes.battery?.fullVolts ?? 4.2 };
+    else delete S.modes.battery;
+    markDirty();
+  });
   $("#device").addEventListener("change", e => { S.modes.device = e.target.value; S.key = null; markDirty(); render(); });
   $("#profName").addEventListener("input", e => { prof().name = e.target.value; markDirty(); renderSide(); });
   for (const b of $("#viewTabs").children) b.addEventListener("click", () => { S.view = b.dataset.view; history.replaceState(null, "", "#" + S.view); render(); });

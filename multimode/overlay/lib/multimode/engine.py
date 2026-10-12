@@ -85,6 +85,7 @@ class Engine(Updateable):
 
         if modes is None:
             modes = load_json(root + "/modes.json")
+        self.config = modes
         self.modes = modes["modes"]
 
         if mode is None:
