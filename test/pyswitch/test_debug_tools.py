@@ -11,6 +11,11 @@ with patch.dict(sys.modules, {
     "adafruit_midi.system_exclusive": MockAdafruitMIDISystemExclusive(),
     "adafruit_midi.program_change": MockAdafruitMIDIProgramChange(),
     "adafruit_midi.midi_message": MockAdafruitMIDIMessage(),
+    "adafruit_midi.channel_pressure": MockAdafruitMIDIChannelPressure(),
+    "adafruit_midi.note_off": MockAdafruitMIDINoteOff(),
+    "adafruit_midi.note_on": MockAdafruitMIDINoteOn(),
+    "adafruit_midi.pitch_bend": MockAdafruitMIDIPitchBend(),
+    "adafruit_midi.polyphonic_key_pressure": MockAdafruitMIDIPolyphonicKeyPressure(),
     "gc": MockGC(),
     "time": MockTime
 }):

@@ -61,6 +61,8 @@ class MidiController:
         self.__routings_from_appl = [x for x in routings if x.source == MidiRouting.APPLICATION]
         self.__routings_to_appl = [x for x in routings if x.target == MidiRouting.APPLICATION]
         self.__routings_external = [x for x in routings if x.source != MidiRouting.APPLICATION and x.target != MidiRouting.APPLICATION]
+        self.__sources_to_appl = [x.source for x in self.__routings_to_appl]
+        self.__pending = []
 
     def send(self, midi_message):
         # Send to all routings which have APPLICATION as source
@@ -93,11 +95,10 @@ class MidiController:
         # This avoids dropping/interleaving messages when the same source is routed both
         # to APPLICATION and to external THRU targets.
         external_routings = [x for x in self.__routings_external if x.source not in raw_handled_sources]
-        routings_all = external_routings + self.__routings_to_appl
 
         sources = []
         results = []
-        for r in routings_all:
+        for r in external_routings:
             if r.source in sources:
                 continue
 
@@ -125,14 +126,21 @@ class MidiController:
 
                 break
 
-        # Return first queued message for APPLICATION
+        # Messages of sources which are also routed to APPLICATION have been read above already:
+        # Queue them, so none is lost when several of them arrive in the same cycle.
+        for i in range(len(sources)):
+            if results[i] and sources[i] in self.__sources_to_appl:
+                self.__pending.append(results[i])
+
+        if self.__pending:
+            return self.__pending.pop(0)
+
+        # Sources only routed to APPLICATION: Return the first message in routing order (next calls
+        # deliver the next messages)
         for r in self.__routings_to_appl:
-            for i in range(len(sources)):
-                if sources[i] != r.source:
-                    continue
+            if r.source in sources:
+                continue
 
-                msg = results[i]
-                if msg:
-                    return msg
-
-                break
+            msg = r.source.receive()
+            if msg:
+                return msg
