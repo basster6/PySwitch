@@ -15,7 +15,14 @@ class TestValidation(unittest.TestCase):
         modes = sim._engine.load_json(sim.PROFILES + "/modes.json")
         for device in sim.DEVICES:
             for mode in modes["modes"]:
-                self.assertEqual(sim.validate(mode, device), [], device + " / " + mode)
+                warnings = []
+                self.assertEqual(sim.validate(mode, device, warnings = warnings), [], device + " / " + mode)
+                # All texts of the bundled profiles fit their place on the screen
+                self.assertEqual(warnings, [], device + " / " + mode)
+
+    def test_per_device_hint(self):
+        self.assertEqual(sim.Sim("qc", device = "mini6").hint("3"), "PAGE SWAP")
+        self.assertEqual(sim.Sim("qc", device = "mc10").hint("3"), "PAGE")
 
 
 class TestQuadCortex(unittest.TestCase):
@@ -25,16 +32,19 @@ class TestQuadCortex(unittest.TestCase):
 
     def test_initial_chain_mode(self):
         s = self.s
-        self.assertEqual([s.label(k) for k in s.keys], ["A2", "B2", "PRE", "C2", "D2", "TAP"])
-        self.assertEqual(s.main.text, "CH\nPRE MP2 QP2")
+        self.assertEqual([s.label(k) for k in s.keys], ["A II", "B II", "PRE", "C II", "D II", "TAP"])
+        self.assertEqual([s.hint(k) for k in s.keys], ["TUNER", "MP SWAP", "PAGE SWAP", "SCENE -", "SCENE +", "GIG VIEW"])
+        self.assertEqual(s.status.text, "QC  CHAIN  MP II")
+        self.assertEqual([s.tile(i) for i in range(3)], [("MODE", "PRE"), ("QC PAGE", "II"), ("SCENE", "-")])
+        self.assertEqual(s.message.text, "")
         self.assertEqual(s.sent, [])
 
     def test_screen_rendered_without_key_press(self):
         # Regression: the engine must be registered as PySwitch Updateable to render the screen after boot
         s = sim.Sim("qc")
         self.assertIn(s.engine, s.appl.updateables)
-        self.assertEqual(s.main.text, "CH\nPRE MP2 QP2")
-        self.assertTrue(s.bar.text.startswith("PW: "))
+        self.assertEqual(s.tile(0), ("MODE", "PRE"))
+        self.assertEqual(s.power.text, "USB")
 
     def test_chain_slots_follow_midi_page(self):
         s = self.s
@@ -44,7 +54,8 @@ class TestQuadCortex(unittest.TestCase):
 
         s.long("2")                     # internal MIDI page swap, nothing sent
         self.assertEqual(s.take(), [])
-        self.assertEqual(s.label("1"), "A1")
+        self.assertEqual(s.label("1"), "A I")
+        self.assertEqual(s.message.text, "MIDI PAGE I")
 
         s.short("1")
         self.assertEqual(s.take(), [[CC, 35, 127]])
@@ -53,20 +64,32 @@ class TestQuadCortex(unittest.TestCase):
         s = self.s
         s.long("1")
         self.assertEqual(s.take(), [[CC, 45, 127]])
-        self.assertEqual(s.bar.back_color, (255, 0, 0))
-        self.assertTrue(s.bar.text.endswith(" T+"))
+        # Tuner layer: everything red
+        self.assertEqual(s.status.text, "QC  TUNER")
+        self.assertEqual(s.status.back_color, (255, 0, 0))
+        self.assertEqual([s.tiles[i]["value"].back_color for i in range(3)], [(255, 0, 0)] * 3)
+        self.assertEqual(s.message.text, "TUNER ON")          # flash first
+        s.advance(2000)
+        self.assertEqual(s.message.text, "TUNER ON (HOLD 1)")
+        self.assertEqual(s.message.back_color, (255, 0, 0))
 
         s.long("1")
         self.assertEqual(s.take(), [[CC, 45, 0]])
+        self.assertEqual(s.status.text, "QC  CHAIN  MP II")
 
     def test_scene_steps_wrap_and_track_qc_page(self):
         s = self.s
-        s.long("A")                     # scene -1 from 0 wraps to 7 (page II)
-        self.assertEqual(s.take(), [[CC, 43, 7]])
-        s.long("B")
-        s.long("B")
-        self.assertEqual(s.take(), [[CC, 43, 0], [CC, 43, 1]])
-        self.assertIn("QP1", s.main.text)
+        s.long("B")                     # scene unknown at start: +1 selects scene A (page I)
+        self.assertEqual(s.take(), [[CC, 43, 0]])
+        self.assertEqual(s.tile(2), ("SCENE I", "A"))
+        s.long("A")
+        s.long("A")                     # wraps to scene D of page II
+        self.assertEqual(s.take(), [[CC, 43, 7], [CC, 43, 6]])
+        self.assertEqual(s.tile(2), ("SCENE II", "C"))
+        self.assertEqual(s.tile(1), ("QC PAGE", "II"))
+        self.assertEqual(s.message.text, "SCENE C (II)")
+        s.advance(2000)
+        self.assertEqual(s.message.text, "")
 
     def test_mode_cycle_waits_for_double_click(self):
         s = self.s
@@ -89,8 +112,9 @@ class TestQuadCortex(unittest.TestCase):
         s = self.s
         s.long("C")
         self.assertEqual(s.take(), [[CC, 46, 127]])
-        self.assertEqual(s.label("1"), "AC")
-        self.assertTrue(s.main.text.startswith("GV Current QP2"))
+        self.assertEqual(s.label("1"), "A II")
+        self.assertEqual(s.hint("1"), "PAGE I")
+        self.assertEqual(s.status.text, "QC  GIG VIEW")
 
         s.short("1")                    # current QC page (II)
         s.long("1")                     # opposite page (I)
@@ -98,7 +122,8 @@ class TestQuadCortex(unittest.TestCase):
 
         s.double("3")                   # swap short/long semantics
         self.assertEqual(s.take(), [])
-        self.assertEqual(s.label("1"), "AO")
+        self.assertEqual(s.label("1"), "A I")
+        self.assertEqual(s.status.text, "QC  GIG VIEW  FLIP")
 
         s.short("1")
         self.assertEqual(s.take(), [[CC, 35, 127]])
@@ -135,7 +160,9 @@ class TestAnagram(unittest.TestCase):
         s.short("1")
         s.short("2")
         self.assertEqual(s.take(), [[CC, 112, 127], [CC, 111, 127]])
-        self.assertEqual(s.main.text, "LOOPER\nPlay/Stop")
+        self.assertEqual(s.message.text, "PLAY/STOP")
+        self.assertEqual(s.tile(2), ("LOOPER", "ON"))
+        self.assertEqual(s.hint("1"), "CLEAR")
 
         s.short("C")
         self.assertEqual(s.take(), [[CC, 110, 127]])
@@ -186,8 +213,8 @@ class TestDevices(unittest.TestCase):
 
     def test_mc10_extra_keys(self):
         s = sim.Sim("qc", device = "mc10")
-        s.short("Up")
-        self.assertEqual(s.take(), [[CC, 43, 1]])
+        s.short("Up")                   # scene unknown at start: Up selects scene A
+        self.assertEqual(s.take(), [[CC, 43, 0]])
 
 
 if __name__ == "__main__":

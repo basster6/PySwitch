@@ -63,6 +63,28 @@ python3 multimode/tools/mmtool.py backup | restore DIR
 python3 -m unittest discover -s multimode/tests
 ```
 
+## 화면
+
+```
+┌──────┬──────┬──────┐  힌트 (길게 누르기, 작은 글씨)
+│  A2  │  B2  │ PRE  │  라벨 (짧게 누르기)
+├──────┴──────┼──────┤  상태줄 (status)          │ 전원 (power)
+├──────┬──────┬──────┤  타일 캡션 (tiles[].caption)
+│ PRE  │  II  │  A   │  타일 값 (tiles[].value, 40pt)
+├──────┴──────┴──────┤
+│      SCENE B       │  메시지 (방금 실행한 동작 = flash, 없으면 message)
+├──────┬──────┬──────┤
+│  C2  │  D2  │ TAP  │  라벨
+│SCN - │SCN + │ GIG  │  힌트
+└──────┴──────┴──────┘
+```
+
+배치는 `overlay/lib/multimode/devices.py`의 `screen_layout()` 한 곳에서 정의되고, 장치·PC 렌더러·웹 미리보기가 같이 씁니다.
+화면 그림: `python3 multimode/tools/render.py` (Pillow 필요, 장치 폰트로 그림) → `multimode/build/screens/sheet.png`.
+글자 폭 표 `tools/font_metrics.json`(`render.py --metrics`)으로 `validate`와 웹 미리보기가 칸을 넘는 문구를 알려줍니다.
+
+메모리 (Mini 6, CircuitPython 7.3.1, 실행 중 여유 RAM): 이전 화면 50KB, 새 화면 18.5KB (라벨 21개). 표현식은 부팅 때 함수로 컴파일되고 프로필 안의 문자열을 대체해서 메모리를 아낍니다.
+
 ## 프로필 형식
 
 ```jsonc
@@ -72,11 +94,17 @@ python3 -m unittest discover -s multimode/tests
   "state":  { "gig": 0, "qp": 2 },                 // 상태 변수 (초깃값)
   "consts": { "FS": [[35,36,37,38],[39,40,41,42]] },
   "vars":   [["opp", "3 - qp"]],                   // 파생 변수, 순서대로 계산
-  "screen": { "bar": "PW: {pw}", "barColor": "DARK_YELLOW", "main": "..." },
+  "screen": {
+    "status": "QC  {'GIG VIEW' if gig else 'CHAIN'}", "statusColor": "DARK_YELLOW",
+    "power": "{('%d%%' % pwp) if pwp >= 0 else 'USB'}",
+    "tiles": [{ "caption": "MODE", "value": "{MODES[ms]}", "color": "ORANGE" }, …],
+    "message": "", "messageColor": "BLACK"
+  },
   "layers": [                                      // 위에서부터 조건(when)이 맞는 첫 레이어가 키를 정의
     { "name": "Gig View", "when": "gig", "screen": { "main": "GV QP{qp}" },
       "keys": {
-        "1": { "label": "A{qp}", "color": "BLUE", "led": ["BLUE", "BLUE", "GRAY"],
+        "1": { "label": "A{qp}", "hint": { "*": "PAGE SWAP", "mc10": "PAGE" },
+               "color": "BLUE", "led": ["BLUE", "BLUE", "GRAY"],
                "short":  [{ "cc": "FS[qp - 1][0]" }],
                "long":   [{ "cc": "FS[opp - 1][0]" }],
                "double": [{ "toggle": "gig" }, { "cc": 46, "val": "127 if gig else 0" }],
@@ -86,7 +114,10 @@ python3 -m unittest discover -s multimode/tests
 ```
 
 - 값은 숫자 그대로이거나 **파이썬 식** 문자열입니다. 라벨은 `{식}` 템플릿입니다.
-- 동작: `cc`/`val`, `pc`, `note`/`vel`, `raw`, `set`/`to`, `toggle`, `inc`/`by`/`mod`/`lo`/`min`/`max`, `if`/`then`/`else`, `mode` (`next`, `prev`, 이름). 모든 MIDI 동작에 `ch`(1-16)로 채널 지정 가능.
+- 동작: `cc`/`val`, `pc`, `note`/`vel`, `raw`, `set`/`to`, `toggle`, `inc`/`by`/`mod`/`lo`/`min`/`max`, `if`/`then`/`else`, `mode` (`next`, `prev`, 이름), `flash`/`ms`/`color` (메시지 줄에 잠깐 표시, 기본 1500ms). 모든 MIDI 동작에 `ch`(1-16)로 채널 지정 가능.
+- 레이어의 `screen`은 프로필 `screen`을 항목별로 덮어씁니다 (`tiles`는 칸별). 예: 튜너 레이어 `{"statusColor": "RED", "tiles": [{"color": "RED"}, …]}`.
+- `label`, `hint`는 기기별 문구 `{ "*": 기본, "mc10": … }`도 됩니다.
+- 이전 형식의 `bar`/`barColor`/`main`은 `status`/`statusColor`/`message`로 읽힙니다.
 - 색: 이름(`BLUE` 등 PySwitch 색), `#rrggbb`, `[r,g,b]`, 또는 그런 값을 내는 식. `led`에 3개 목록을 주면 LED 3칸을 각각 칠합니다.
 - `desc`(설명)는 문자열 또는 `{ "en": …, "zh": …, "ja": …, "ko": … }`. 에디터 전용이라 장치에는 `profiles/<이름>.desc.json`으로 따로 저장되고, 펌웨어는 읽지 않습니다.
 - `double`을 정의한 키는 짧게 누르기가 `doubleMs`만큼 늦게 실행됩니다. 대기 중에는 `_pend`가 그 키 이름입니다.

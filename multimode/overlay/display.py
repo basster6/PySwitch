@@ -1,4 +1,4 @@
-# Display layout is generated for the device configured in profiles/modes.json
+# Display layout is generated for the device configured in profiles/modes.json (see lib/multimode/devices.py)
 from multimode.setup import build_display
 
-Splashes, LABELS, BAR, MAIN = build_display()
+Splashes, UI = build_display()

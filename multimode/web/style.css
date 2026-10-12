@@ -171,16 +171,22 @@ textarea.json { min-height: 60vh; white-space: pre; }
   display: grid; gap: var(--s5);
   overflow-x: auto;
 }
+/* Screen preview: elements are positioned in % of the 240x240 display (layout.json), font sizes in container units */
 .face .screen {
-  justify-self: center; width: min(240px, 100%); aspect-ratio: 1; max-width: 100%;
-  background: var(--lcd); color: var(--lcd-fg); border-radius: 6px; padding: 6px;
-  display: grid; grid-template-rows: auto 1fr auto auto; gap: 4px; font-family: var(--f-display);
-  box-shadow: inset 0 0 0 2px #000;
+  justify-self: center; width: min(300px, 100%); aspect-ratio: 1; max-width: 100%;
+  position: relative; background: #000; border-radius: 4px; overflow: hidden;
+  container-type: inline-size; box-shadow: 0 0 0 3px #000;
 }
-.screen .slots { display: grid; gap: 2px; }
-.screen .slot { font: 700 15px/1 var(--f-display); text-align: center; padding: 6px 2px; border-radius: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.screen .mainarea { display: grid; place-items: center; text-align: center; font: 700 18px/1.05 var(--f-display); white-space: pre-line; opacity: .8; padding: 0 4px; overflow: hidden; }
-.screen .bar { font: 500 11px/1.2 var(--f-mono); padding: 2px 4px; border-radius: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen .px {
+  position: absolute; display: grid; place-items: center; overflow: hidden;
+  white-space: pre; text-align: center; line-height: 1;
+}
+.screen .px.overflow { outline: 2px solid #ff3b3b; outline-offset: -2px; z-index: 1; }
+.screen .px.stroke { box-shadow: inset 0 0 0 calc(100cqw / 240) #000; }
+.screen .f-small { font: 400 calc(100cqw * 11 / 240) Arial, Helvetica, sans-serif; letter-spacing: .02em; }
+.screen .f-label { font: 700 calc(100cqw * 18 / 240) Arial, Helvetica, sans-serif; }
+.screen .f-large { font: 700 calc(100cqw * 44 / 240) "PT Sans Narrow", "Arial Narrow", sans-serif; }
+.usage .khint { display: block; font: 500 11px var(--f-mono); color: var(--muted); margin-top: 2px; }
 .face .row { display: grid; gap: var(--s4); justify-items: center; }
 .sw {
   width: 100%; max-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 6px;

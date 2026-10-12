@@ -6,7 +6,7 @@
 <title>Captain Multimode</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=PT+Sans+Narrow:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -112,10 +112,13 @@
       <label class="field"><span><code>consts</code> · <span data-i18n="set.consts">Constants (JSON)</span></span><textarea id="setConsts" rows="6" class="mono"></textarea></label>
       <label class="field"><span><code>vars</code> · <span data-i18n="set.vars">Derived variables</span></span><textarea id="setVars" rows="4" class="mono"></textarea></label>
       <div class="grid2">
-        <label class="field"><span data-i18n="set.bar">Status bar template</span><input id="setBar" class="mono"></label>
-        <label class="field"><span data-i18n="set.barColor">Status bar color</span><input id="setBarColor" class="mono"></label>
+        <label class="field"><span data-i18n="set.status">Status line</span><input id="setStatus" class="mono"></label>
+        <label class="field"><span data-i18n="set.statusColor">Status color</span><input id="setStatusColor" class="mono"></label>
+        <label class="field"><span data-i18n="set.powerText">Power (right of the status line)</span><input id="setPowerText" class="mono"></label>
+        <label class="field"><span data-i18n="set.message">Message line (when no action is shown)</span><input id="setMessage" class="mono"></label>
+        <label class="field"><span data-i18n="set.messageColor">Message color</span><input id="setMessageColor" class="mono"></label>
       </div>
-      <label class="field"><span data-i18n="set.main">Main screen template</span><textarea id="setMain" rows="2" class="mono"></textarea></label>
+      <label class="field"><span><code>tiles</code> · <span data-i18n="set.tiles">Information tiles</span></span><textarea id="setTiles" rows="6" class="mono"></textarea></label>
       <p class="err" id="settingsErr" hidden></p>
     </div>
 

@@ -11,78 +11,66 @@ from .devices import DEVICES
 CONFIG = load_json(PROFILES_ROOT + "/modes.json")
 DEVICE = CONFIG.get("device", "mini6")
 
-_DISPLAY_WIDTH = 240
-_DISPLAY_HEIGHT = 240
-_SLOT_HEIGHT = 40
-_FOOTER_Y = 200
-_BAR_Y = 180
-
-# Returns (Splashes, labels by key name, bar label, main label)
+# Returns (Splashes, ui) for the device, where ui holds the DisplayLabels as expected by Engine:
+# { "keys": { name: { "label", "hint" } }, "status", "power", "tiles": [ { "caption", "value" } ], "message" }
 def build_display(device = DEVICE):
     from pyswitch.ui.ui import DisplayElement, DisplayBounds
     from pyswitch.ui.elements import DisplayLabel
     from pyswitch.colors import DEFAULT_LABEL_COLOR
     from pyswitch.clients.local.callbacks.splashes import SplashesCallback
+    from .devices import screen_layout, DISPLAY_SIZE
 
-    rows = DEVICES[device]["rows"]
-    labels = {}
+    layout = screen_layout(device)
     children = []
 
-    for r in range(len(rows)):
-        row = rows[r]
-        width = _DISPLAY_WIDTH // len(row)
-        y = 0 if r == 0 else _FOOTER_Y
+    def label(rect, stroke = 1, back = DEFAULT_LABEL_COLOR):
+        x, y, w, h, font = rect
+        lab = DisplayLabel(
+            layout = {
+                "font": font,
+                "backColor": back,
+                "stroke": stroke,
+                "text": ""
+            },
+            bounds = DisplayBounds(x, y, w, h)
+        )
+        children.append(lab)
+        return lab
 
-        for i in range(len(row)):
-            label = DisplayLabel(
-                layout = {
-                    "font": "/fonts/H20.pcf" if len(row) <= 3 else "/fonts/A12.pcf",
-                    "backColor": DEFAULT_LABEL_COLOR,
-                    "stroke": 1
-                },
-                bounds = DisplayBounds(i * width, y, width, _SLOT_HEIGHT)
-            )
-            labels[row[i]] = label
-            children.append(label)
+    ui = {
+        "keys": {},
+        "status": label(layout["status"], 0, (0, 0, 0)),
+        "power": label(layout["power"], 0, (0, 0, 0)),
+        "tiles": [],
+        "message": label(layout["message"], 1, (0, 0, 0)),
+    }
 
-    bar = DisplayLabel(
-        layout = {
-            "font": "/fonts/A12.pcf",
-            "backColor": (0, 0, 0),
-            "text": ""
-        },
-        bounds = DisplayBounds(0, _BAR_Y, _DISPLAY_WIDTH, 20)
-    )
-
-    main = DisplayLabel(
-        bounds = DisplayBounds(0, _SLOT_HEIGHT, _DISPLAY_WIDTH, _BAR_Y - _SLOT_HEIGHT),
-        layout = {
-            "font": "/fonts/PTSans-NarrowBold-40.pcf",
-            "lineSpacing": 0.8,
-            "maxTextWidth": 220,
-            "text": ""
+    for key, rects in layout["keys"].items():
+        ui["keys"][key] = {
+            "label": label(rects["label"]),
+            "hint": label(rects["hint"]),
         }
-    )
 
-    children.append(bar)
-    children.append(main)
+    for tile in layout["tiles"]:
+        ui["tiles"].append({
+            "caption": label(tile["caption"]),
+            "value": label(tile["value"]),
+        })
 
     splashes = SplashesCallback(DisplayElement(
-        bounds = DisplayBounds(0, 0, _DISPLAY_WIDTH, _DISPLAY_HEIGHT),
+        bounds = DisplayBounds(0, 0, DISPLAY_SIZE, DISPLAY_SIZE),
         children = children
     ))
 
-    return splashes, labels, bar, main
+    return splashes, ui
 
-def create_engine(labels, bar, main, device = DEVICE):
+def create_engine(ui, device = DEVICE):
     from .engine import Engine
     from .devices import get_switches
 
     return Engine(
         switches = get_switches(device),
-        labels = labels,
-        bar = bar,
-        main = main,
+        ui = ui,
         device = device,
         modes = CONFIG
     )

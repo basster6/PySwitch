@@ -37,10 +37,12 @@ const OPS = {
   toggle: { title: "op.toggle", fields: [["toggle", "f.var", "gig"]] },
   inc:    { title: "op.inc", fields: [["inc", "f.var", "sc"], ["by", "f.by", "1"], ["mod", "f.mod", ""], ["lo", "f.lo", "0"], ["min", "f.min", ""], ["max", "f.max", ""]] },
   mode:   { title: "op.mode", fields: [["mode", "f.target", "next"]] },
+  flash:  { title: "op.flash", fields: [["flash", "f.flash", "TAP"], ["ms", "f.ms", "1500"], ["color", "f.color", ""]] },
   if:     { title: "op.if", fields: [["if", "f.if", "gig"], ["then", "f.then", "[]"], ["else", "f.else", "[]"]] },
 };
 const ph = v => (v.startsWith("f.") ? t(v) : v);
-const NAME_FIELDS = new Set(["set", "toggle", "inc", "mode"]);
+// Fields which always stay strings (names and templates)
+const NAME_FIELDS = new Set(["set", "toggle", "inc", "mode", "flash", "color"]);
 const JSON_FIELDS = new Set(["then", "else"]);
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -167,6 +169,21 @@ async function loadDefaults() {
   }
   S.mode = S.modes.modes[0];
   try { S.manifest = await fetchJson("firmware/manifest.json"); } catch { S.manifest = null; }
+  S.layouts = await fetchJson("layout.json");
+  S.fonts = await fetchJson("fonts.json").catch(() => null);
+}
+
+// Per device texts ({ "*": "PAGE SWAP", "mc10": "PG SWP" }) resolve to the text of the selected device
+const isPerDevice = v => v && typeof v === "object" && !Array.isArray(v);
+const perDevice = v => (isPerDevice(v) ? v[S.modes.device] ?? v["*"] ?? "" : v);
+// Sets the text of the selected device (or the default one, if there is no device specific text)
+const setPerDevice = (cur, text) => (isPerDevice(cur) ? { ...cur, [S.modes.device in cur ? S.modes.device : "*"]: text } : text);
+
+// Width of a text in a firmware font (fonts.json from tools/font_metrics.json)
+function textWidth(font, text) {
+  const m = S.fonts?.[font];
+  if (!m) return 0;
+  return Math.max(...String(text).split("\n").map(line => [...line].reduce((w, c) => w + (m[c] ?? m.M), 0)));
 }
 
 /* ---------- Device file access ---------- */
@@ -563,6 +580,7 @@ function summarize(ops) {
     if ("inc" in op) return `${op.inc} ${(op.by ?? 1) >= 0 ? "+" : ""}${op.by ?? 1}`;
     if ("mode" in op) return t("sum.mode", { v: op.mode });
     if ("if" in op) return t("sum.if", { v: op.if });
+    if ("flash" in op) return t("sum.flash", { v: op.flash });
     return "?";
   }).join(", ");
 }
@@ -582,7 +600,9 @@ function renderUsage() {
         const d = pick(kd.desc?.[tr.id]);
         return h("td", { class: d ? "" : "auto" }, d || (kd[tr.id]?.length ? summarize(kd[tr.id]) : ""));
       });
-      return h("tr", {}, h("th", { scope: "row" }, h("span", { class: "kname" }, k), h("span", { class: "klabel" }, previewText(kd.label))), ...cells);
+      const hint = perDevice(kd.hint);
+      return h("tr", {}, h("th", { scope: "row" }, h("span", { class: "kname" }, k), h("span", { class: "klabel" }, previewText(perDevice(kd.label))),
+        hint ? h("span", { class: "khint" }, previewText(hint)) : null), ...cells);
     }).filter(Boolean);
     if (!rows.length) return null;
     return h("section", { class: "usage-layer" },
@@ -607,18 +627,25 @@ function renderUsage() {
 let NS = {};
 const refreshNs = () => { NS = prof() ? namespace(prof(), { DEVICE: S.modes.device, MODES_LIST: S.modes.modes }) : {}; };
 
-function colorCss(v, depth = 0) {
+// Resolves a profile color (name, #rrggbb, [r, g, b], list of colors, expression) to [r, g, b] or null
+function colorRgb(v, depth = 0) {
   if (typeof v === "string") {
-    if (COLORS[v]) return `rgb(${COLORS[v].join(",")})`;
-    if (/^#[0-9a-f]{6}$/i.test(v)) return v;
+    if (COLORS[v]) return COLORS[v];
+    if (/^#[0-9a-f]{6}$/i.test(v)) return [1, 3, 5].map(i => parseInt(v.slice(i, i + 2), 16));
     if (depth > 2) return null;
     const r = evalValue(v, NS);
-    return r === undefined ? null : colorCss(r, depth + 1);
+    return r === undefined ? null : colorRgb(r, depth + 1);
   }
-  if (Array.isArray(v) && v.length === 3 && typeof v[0] === "number") return `rgb(${v.join(",")})`;
-  if (Array.isArray(v)) return colorCss(v[0], depth + 1);
+  if (Array.isArray(v) && v.length === 3 && typeof v[0] === "number") return v;
+  if (Array.isArray(v)) return colorRgb(v[0], depth + 1);
   return null;
 }
+
+const rgbCss = c => (c ? `rgb(${c.join(",")})` : null);
+const colorCss = v => rgbCss(colorRgb(v));
+const dim = c => (c ? c.map(x => Math.floor(x * 0.45)) : c);   // engine._dim
+// Text color rule of PySwitch's DisplayLabel
+const textOn = c => (!c || c[0] * 0.2126 + c[1] * 0.7151 + c[2] * 0.0721 < 140 ? "#fff" : "#000");
 
 // Preview of a template in the initial state; expressions which cannot be evaluated show as "…"
 const previewText = t => renderTemplate(t, NS) ?? String(t || "").replace(/\{([^}]*)\}/g, "…");
@@ -699,35 +726,76 @@ function renderLayers() {
       h("button", { class: "icon danger", title: t("layer.delete"), "aria-label": t("layer.delete"), onclick: () => { if (confirm(t("layer.confirmDelete", { name: l.name }))) { layers.splice(S.layer, 1); markDirty(); render(); } } }, "✕")),
     h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.desc") + " · " + LANGS[lang]),
       h("input", { id: "layerDesc", value: pick(l.desc), oninput: e => { const v = assign(l.desc, e.target.value); if (v) l.desc = v; else delete l.desc; markDirty(); } })),
-    h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.main")),
-      h("textarea", { id: "layerMain", class: "mono", rows: 2, oninput: e => {
-        if (e.target.value) { l.screen = l.screen || {}; l.screen.main = e.target.value; }
-        else if (l.screen) { delete l.screen.main; if (!Object.keys(l.screen).length) delete l.screen; }
-        markDirty(); renderFace();
-      } }, l.screen?.main ?? "")));
+    h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.screen")),
+      h("textarea", { id: "layerScreen", class: "mono", rows: 3, placeholder: '{ "statusColor": "RED", "tiles": [{ "color": "RED" }] }', onchange: e => {
+        const v = e.target.value.trim();
+        try {
+          if (v) l.screen = JSON.parse(v); else delete l.screen;
+          e.target.setCustomValidity(""); markDirty(); renderFace();
+        } catch { e.target.setCustomValidity(t("f.notJson")); e.target.reportValidity(); }
+      } }, l.screen ? JSON.stringify(l.screen, null, 1) : "")));
 }
 
 function renderLayersButtons() {
   [...$("#layers").children].forEach((b, i) => { const l = prof().layers[i]; if (l) b.textContent = l.name || t("layer.n", { n: i + 1 }); });
 }
 
+// Screen settings of the profile with the override of a layer, same as Engine.screen_for()
+function screenFor(p, layer) {
+  const screen = { ...(p.screen || {}) };
+  const over = layer?.screen || {};
+  for (const [attr, value] of Object.entries(over)) {
+    if (attr === "tiles" && screen.tiles) {
+      screen.tiles = Array.from({ length: Math.max(screen.tiles.length, value.length) }, (_, i) => ({ ...(screen.tiles[i] || {}), ...(value[i] || {}) }));
+    } else screen[attr] = value;
+  }
+  for (const [old, now] of [["bar", "status"], ["barColor", "statusColor"], ["main", "message"]]) {
+    if (old in screen && !(now in screen)) screen[now] = screen[old];
+  }
+  return screen;
+}
+
+// Device screen preview, positioned with the layout of the firmware (layout.json from devices.screen_layout)
+function renderScreen(p) {
+  const layout = S.layouts?.[S.modes.device] || S.layouts?.mini6;
+  const sc = screenFor(p, p.layers[S.layer]);
+  const FONT = { "/fonts/A12.pcf": "f-small", "/fonts/H20.pcf": "f-label", "/fonts/PTSans-NarrowBold-40.pcf": "f-large" };
+
+  const box = (rect, text, back, extra = "") => {
+    const [x, y, w, hh, font] = rect;
+    const width = textWidth(font, text);
+    const over = width > w - 2;
+    return h("div", {
+      class: "px " + (FONT[font] || "f-small") + extra + (over ? " overflow" : ""),
+      title: over ? t("face.overflow", { text, w: width, max: w - 2 }) : null,
+      style: `left:${x / 2.4}%;top:${y / 2.4}%;width:${w / 2.4}%;height:${hh / 2.4}%;background:${rgbCss(back) || "transparent"};color:${textOn(back)}`,
+    }, text);
+  };
+
+  const parts = [];
+  for (const [k, rects] of Object.entries(layout.keys)) {
+    const { kd } = resolveKey(k);
+    const c = kd ? colorRgb(kd.color ?? "WHITE") : [0, 0, 0];
+    parts.push(box(rects.label, kd ? previewText(perDevice(kd.label)) : "", c || COLORS.DARK_GRAY, " stroke"));
+    parts.push(box(rects.hint, kd ? previewText(perDevice(kd.hint) || "") : "", dim(c || COLORS.DARK_GRAY), " stroke"));
+  }
+  const status = colorRgb(sc.statusColor ?? "BLACK") || COLORS.BLACK;
+  parts.push(box(layout.status, previewText(sc.status || ""), status));
+  parts.push(box(layout.power, previewText(sc.power || ""), colorRgb(sc.powerColor) || status));
+  layout.tiles.forEach((rects, i) => {
+    const tile = (sc.tiles || [])[i] || {};
+    const c = colorRgb(tile.color ?? "DARK_GRAY") || COLORS.DARK_GRAY;
+    parts.push(box(rects.caption, previewText(tile.caption || ""), dim(c), " stroke"));
+    parts.push(box(rects.value, previewText(tile.value || ""), c, " stroke"));
+  });
+  parts.push(box(layout.message, previewText(sc.message || ""), colorRgb(sc.messageColor ?? "BLACK") || COLORS.BLACK, " stroke"));
+  return h("div", { class: "screen", role: "img", "aria-label": t("face.screen") }, parts);
+}
+
 function renderFace() {
   const p = prof();
   const rows = device().rows;
-  const screenDef = { ...(p.screen || {}), ...(p.layers[S.layer]?.screen || {}) };
-
-  const slotRow = row => h("div", { class: "slots", style: `grid-template-columns:repeat(${row.length},1fr)` },
-    ...row.map(k => {
-      const { kd } = resolveKey(k);
-      const bg = colorCss(kd?.color) || "#323232";
-      return h("div", { class: "slot", style: `background:${bg};color:${contrast(bg)}` }, kd ? previewText(kd.label) : "");
-    }));
-
-  const screen = h("div", { class: "screen", "aria-label": t("face.screen") },
-    slotRow(rows[0]),
-    h("div", { class: "mainarea" }, previewText(screenDef.main || "")),
-    h("div", { class: "bar", style: `background:${colorCss(screenDef.barColor) || "#202830"}` }, previewText(screenDef.bar || "")),
-    slotRow(rows[1]));
+  const screen = renderScreen(p);
 
   const swRow = row => h("div", { class: "row", style: `grid-template-columns:repeat(${row.length},minmax(64px,1fr))` },
     ...row.map(k => {
@@ -743,13 +811,6 @@ function renderFace() {
     }));
 
   $("#face").replaceChildren(swRow(rows[0]), screen, swRow(rows[1]));
-}
-
-function contrast(css) {
-  const m = css.match(/\d+/g);
-  if (!m) return "#fff";
-  const [r, g, b] = m.map(Number);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 140 ? "#111" : "#fff";
 }
 
 function renderEditor() {
@@ -783,8 +844,11 @@ function renderEditor() {
   const swatch = h("div", { class: "swatch", style: `background:${colorCss(kd.color) || "repeating-linear-gradient(45deg,#888 0 4px,#bbb 4px 8px)"}`, title: t("ed.exprSwatch") });
 
   ed.replaceChildren(head,
-    h("label", { class: "field" }, h("span", {}, t("ed.label")),
-      h("input", { id: "kLabel", class: "mono", value: kd.label ?? "", oninput: e => set("label", e.target.value) })),
+    h("div", { class: "grid2" },
+      h("label", { class: "field" }, h("span", {}, t("ed.label")),
+        h("input", { id: "kLabel", class: "mono", value: perDevice(kd.label) ?? "", oninput: e => set("label", setPerDevice(kd.label, e.target.value)) })),
+      h("label", { class: "field" }, h("span", {}, t("ed.hint")),
+        h("input", { id: "kHint", class: "mono", value: perDevice(kd.hint) ?? "", placeholder: t("ed.hintPh"), oninput: e => set("hint", setPerDevice(kd.hint, e.target.value)) }))),
     h("div", { class: "field" }, h("span", {}, t("ed.color")),
       h("div", { class: "colorrow" }, colorInput, swatch), palette),
     h("div", { class: "grid2" },
@@ -910,9 +974,13 @@ function renderSettings() {
   $("#setState").value = JSON.stringify(p.state || {}, null, 1);
   $("#setConsts").value = JSON.stringify(p.consts || {}, null, 1);
   $("#setVars").value = JSON.stringify(p.vars || [], null, 1);
-  $("#setBar").value = p.screen?.bar ?? "";
-  $("#setBarColor").value = p.screen?.barColor ?? "";
-  $("#setMain").value = p.screen?.main ?? "";
+  const sc = screenFor(p, null);
+  $("#setStatus").value = sc.status ?? "";
+  $("#setStatusColor").value = sc.statusColor ?? "";
+  $("#setPowerText").value = sc.power ?? "";
+  $("#setMessage").value = sc.message ?? "";
+  $("#setMessageColor").value = sc.messageColor ?? "";
+  $("#setTiles").value = JSON.stringify(sc.tiles || [], null, 1);
   $("#settingsErr").hidden = true;
 }
 
@@ -926,12 +994,23 @@ function bindSettings() {
     catch (err) { $("#settingsErr").hidden = false; $("#settingsErr").textContent = t("set.jsonError", { attr, e: err.message }); }
   });
   js("#setState", "state"); js("#setConsts", "consts"); js("#setVars", "vars");
-  const scr = (id, attr) => $(id).addEventListener("input", e => {
+  // Writes the screen attributes with the names of schema 2 and removes the old ones (bar, barColor, main)
+  const scr = (id, attr, old) => $(id).addEventListener("input", e => {
     const p = prof(); p.screen = p.screen || {};
+    if (old) delete p.screen[old];
     if (e.target.value) p.screen[attr] = e.target.value; else delete p.screen[attr];
     markDirty();
   });
-  scr("#setBar", "bar"); scr("#setBarColor", "barColor"); scr("#setMain", "main");
+  scr("#setStatus", "status", "bar"); scr("#setStatusColor", "statusColor", "barColor"); scr("#setPowerText", "power");
+  scr("#setMessage", "message", "main"); scr("#setMessageColor", "messageColor");
+  $("#setTiles").addEventListener("change", e => {
+    try {
+      const tiles = JSON.parse(e.target.value);
+      if (!Array.isArray(tiles)) throw new Error("[]");
+      const p = prof(); p.screen = p.screen || {}; p.screen.tiles = tiles;
+      $("#settingsErr").hidden = true; markDirty();
+    } catch (err) { $("#settingsErr").hidden = false; $("#settingsErr").textContent = t("set.jsonError", { attr: "tiles", e: err.message }); }
+  });
 }
 
 function render() {

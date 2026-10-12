@@ -134,7 +134,9 @@ export function pyEval(src, ns) {
 
 // Builds the expression namespace of a profile for its initial state
 export function namespace(profile, extra = {}) {
-  const ns = { ...(profile.consts || {}), ...(profile.state || {}), MODE: profile.tag || "", _pend: "", DEVICE: "", ...extra };
+  // Power variables are defined by the engine for profiles with "power": true (see Engine._compile_profile)
+  const power = profile.power ? { pw: "", pws: -1, pwv: 0, pwb: -1, pwp: -1 } : {};
+  const ns = { ...(profile.consts || {}), ...power, ...(profile.state || {}), MODE: profile.tag || "", _pend: "", DEVICE: "", ...extra };
   for (const [name, expr] of profile.vars || []) {
     try { ns[name] = pyEval(expr, ns); } catch { ns[name] = undefined; }
   }

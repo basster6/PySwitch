@@ -24,8 +24,17 @@ PROFILES_ROOT = "/profiles"
 
 _TRIGGERS = ("short", "long", "double")
 
+_FLASH_MS = 1500
+
 # Attributes of operations which hold values (literals or expressions)
 _OP_VALUES = ("cc", "val", "pc", "note", "vel", "ch", "to", "by", "mod", "lo", "min", "max", "if")
+
+
+# Darker variant of a color (for hint and caption backgrounds)
+def _dim(color, factor = 0.45):
+    if not color:
+        return color
+    return (int(color[0] * factor), int(color[1] * factor), int(color[2] * factor))
 
 
 def _ms():
@@ -70,17 +79,18 @@ def parse_template(template):
 class Engine(Updateable):
 
     # switches: List of PySwitch switch assignments. Keys are addressed by the assignment's "name" ("1", "A", "Up"...)
-    # labels:   Dict of DisplayLabels, by key name (keys without label are allowed)
-    # bar:      Status bar DisplayLabel (optional)
-    # main:     Main area DisplayLabel (optional)
+    # ui:       Display labels (see setup.build_display), all optional:
+    #           { "keys": { name: { "label", "hint" } }, "status", "power", "tiles": [ { "caption", "value" } ], "message" }
     # device:   Device ID (see devices.py), available as DEVICE in expressions
     # root:     Profiles directory
     # mode:     Profile name to load (optional, overrides the stored selection)
-    def __init__(self, switches, labels, bar = None, main = None, device = "", root = PROFILES_ROOT, mode = None, modes = None):
+    def __init__(self, switches, ui, device = "", root = PROFILES_ROOT, mode = None, modes = None):
         self.root = root
-        self.bar = bar
-        self.main = main
+        self.ui = ui
         self.device = device
+        self.flash_text = None
+        self.flash_color = None
+        self.flash_until = 0
         self.appl = None
 
         if modes is None:
@@ -97,8 +107,6 @@ class Engine(Updateable):
         self.mode = mode
         self.profile = load_json(root + "/" + mode + ".json")
 
-        self._code = {}
-        self._templates = {}
         self.pending_key = ""
         self.screen_dirty = True
         self.key_names = [a["name"] for a in switches]
@@ -108,7 +116,9 @@ class Engine(Updateable):
         self._primaries = []
         for assignment in switches:
             key = assignment["name"]
-            primary = KeyAction(self, key, labels.get(key, None), True)
+            key_ui = ui.get("keys", {}).get(key, {})
+            primary = KeyAction(self, key, key_ui.get("label", None), True)
+            primary.hint = key_ui.get("hint", None)
             self._primaries.append(primary)
 
             entry = {
@@ -138,6 +148,11 @@ class Engine(Updateable):
             ns[k] = v
         for k, v in p.get("state", {}).items():
             ns[k] = v
+        if p.get("power", False):
+            # Variables set by power.PowerSense, defined before its first measurement
+            for k, v in (("pw", ""), ("pws", -1), ("pwv", 0), ("pwb", -1), ("pwp", -1)):
+                if not k in ns:
+                    ns[k] = v
         ns["MODE"] = self.tag
         ns["MODES_LIST"] = self.modes
         ns["_pend"] = ""
@@ -151,6 +166,13 @@ class Engine(Updateable):
         for layer in self.layers:
             if not "keys" in layer:
                 layer["keys"] = {}
+
+            # Per device texts: { "*": "PAGE SWAP", "mc10": "PG SWP" } -> the text for this device
+            for kd in layer["keys"].values():
+                for attr in ("label", "hint"):
+                    v = kd.get(attr, None)
+                    if isinstance(v, dict):
+                        kd[attr] = v.get(self.device, v.get("*", ""))
 
             # Descriptions are only used by the editor: free the memory
             layer.pop("desc", None)
@@ -168,6 +190,7 @@ class Engine(Updateable):
     # more than 10 times faster. Only keys present on the device are regarded.
     def _precompile(self):
         exprs = []
+        templates = []
         seen = {}
 
         def add(value):
@@ -175,11 +198,11 @@ class Engine(Updateable):
                 seen[value] = True
                 exprs.append(value)
 
+        # A template with expressions becomes one expression ("A " + str(x)), which saves the parsed parts
         def add_template(template):
-            if isinstance(template, str):
-                for is_expr, text in parse_template(template):
-                    if is_expr:
-                        add(text)
+            if isinstance(template, str) and not template in seen and "{" in template:
+                seen[template] = True
+                templates.append(template)
 
         def add_color(value):
             if isinstance(value, list):
@@ -195,13 +218,22 @@ class Engine(Updateable):
                         add(op[attr])
                 for b in op.get("raw", []):
                     add(b)
+                if "flash" in op:
+                    add_template(op["flash"])
+                    add_color(op.get("color", None))
                 add_ops(op.get("then", []))
                 add_ops(op.get("else", []))
 
         def add_screen(screen):
-            add_template(screen.get("bar", None))
-            add_template(screen.get("main", None))
-            add_color(screen.get("barColor", None))
+            for attr in ("status", "power", "message", "bar", "main"):
+                add_template(screen.get(attr, None))
+            for attr in ("statusColor", "powerColor", "messageColor", "barColor"):
+                add_color(screen.get(attr, None))
+            for tile in screen.get("tiles", []):
+                if tile:
+                    add_template(tile.get("caption", None))
+                    add_template(tile.get("value", None))
+                    add_color(tile.get("color", None))
 
         for _, expr in self.vars:
             add(expr)
@@ -216,55 +248,105 @@ class Engine(Updateable):
                 if not key in self.key_names:
                     continue
                 add_template(kd.get("label", None))
+                add_template(kd.get("hint", None))
                 add_color(kd.get("color", None))
                 add_color(kd.get("led", None))
                 add(kd.get("bright", None))
                 for trigger in _TRIGGERS:
                     add_ops(kd.get(trigger, []))
 
+        for template in templates:
+            exprs.append(template)
+
         if not exprs:
             return
 
-        src = "_F=(\n" + "".join("lambda:(" + e + "),\n" for e in exprs) + ")\n"
+        n_plain = len(exprs) - len(templates)
+
+        def source(i):
+            if i < n_plain:
+                return exprs[i]
+            parts = []
+            for is_expr, text in parse_template(exprs[i]):
+                parts.append("str(" + text + ")" if is_expr else repr(text))
+            return " + ".join(parts)
+
+        src = "_F=(\n" + "".join("lambda:(" + source(i) + "),\n" for i in range(len(exprs))) + ")\n"
         try:
             exec(src, self.ns)
         except SyntaxError:
             # Find the culprit
-            for e in exprs:
+            for i in range(len(exprs)):
                 try:
-                    eval("lambda:(" + e + ")", {})
+                    eval("lambda:(" + source(i) + ")", {})
                 except SyntaxError:
-                    raise Exception("Invalid expression in profile " + self.mode + ": " + e)
+                    raise Exception("Invalid expression in profile " + self.mode + ": " + exprs[i])
             raise
 
         functions = self.ns.pop("_F")
+        code = {}
         for i in range(len(exprs)):
-            self._code[exprs[i]] = functions[i]
+            code[exprs[i]] = functions[i]
 
-    # Evaluates an expression (strings) or returns the value as is (everything else)
-    def ev(self, value):
-        if not isinstance(value, str):
+        # Replace the expression strings in the profile by their functions, so the strings can be freed
+        # (all values are evaluated by ev(), render() and color(), which accept functions)
+        def link(value):
+            if isinstance(value, str):
+                return code.get(value, value)
+            if isinstance(value, list):
+                return [link(v) for v in value]
             return value
 
-        fn = self._code.get(value, None)
-        if fn is None:
-            # Not precompiled (should not happen): slow path
+        def link_dict(d, attrs):
+            for attr in attrs:
+                if attr in d:
+                    d[attr] = link(d[attr])
+
+        def link_ops(ops):
+            for op in ops:
+                link_dict(op, _OP_VALUES + ("raw", "flash", "color"))
+                link_ops(op.get("then", []))
+                link_ops(op.get("else", []))
+
+        def link_screen(screen):
+            link_dict(screen, ("status", "power", "message", "bar", "main", "statusColor", "powerColor", "messageColor", "barColor"))
+            for tile in screen.get("tiles", []):
+                if tile:
+                    link_dict(tile, ("caption", "value", "color"))
+
+        self.vars = [[name, link(expr)] for name, expr in self.vars]
+        link_screen(self.screen)
+        for layer in self.layers:
+            link_dict(layer, ("when",))
+            link_screen(layer.get("screen", {}))
+            for kd in layer["keys"].values():
+                link_dict(kd, ("label", "hint", "color", "led", "bright"))
+                for trigger in _TRIGGERS:
+                    link_ops(kd.get(trigger, []))
+
+    # Evaluates a value: compiled expressions (functions) are called, strings are evaluated (slow path, only for
+    # values which were not precompiled), everything else is returned as is.
+    def ev(self, value):
+        if callable(value):
+            return value()
+        if isinstance(value, str):
             return eval(value, self.ns)
+        return value
 
-        return fn()
-
-    # Renders a label template
+    # Renders a label template (precompiled to one function, see _precompile)
     def render(self, template):
         if template is None:
             return ""
 
-        parts = self._templates.get(template, None)
-        if parts is None:
-            parts = parse_template(template)
-            self._templates[template] = parts
+        if callable(template):
+            return template()
 
+        if not "{" in template:
+            return template
+
+        # Not precompiled (should not happen): slow path
         ret = ""
-        for is_expr, text in parts:
+        for is_expr, text in parse_template(template):
             ret += str(self.ev(text)) if is_expr else text
         return ret
 
@@ -272,6 +354,9 @@ class Engine(Updateable):
     def color(self, value):
         if value is None:
             return None
+
+        if callable(value):
+            return self.color(value())
 
         if isinstance(value, tuple):
             return value
@@ -381,6 +466,12 @@ class Engine(Updateable):
         elif "mode" in op:
             self.switch_mode(op["mode"])
 
+        elif "flash" in op:
+            # Shows a text in the message area for a while (rendered now, so it shows the state at this moment)
+            self.flash_text = self.render(op["flash"])
+            self.flash_color = op.get("color", None)
+            self.flash_until = _ms() + int(self.ev(op.get("ms", _FLASH_MS)))
+
         else:
             raise Exception("Unknown operation: " + repr(op))
 
@@ -406,8 +497,8 @@ class Engine(Updateable):
 
         store.save_index(index)
 
-        if self.bar:
-            self.bar.text = "> " + self.modes[index]
+        if self.ui.get("message", None):
+            self.ui["message"].text = "> " + self.modes[index]
 
         store.reload()
 
@@ -434,8 +525,13 @@ class Engine(Updateable):
         self.render_screen(layers)
         self.screen_dirty = False
 
-    # Called periodically by PySwitch: Renders the screen if only single keys have been rendered before
+    # Called periodically by PySwitch: Renders the screen if only single keys have been rendered before,
+    # or a flash message expired
     def update(self):
+        if self.flash_text is not None and _ms() >= self.flash_until:
+            self.flash_text = None
+            self.screen_dirty = True
+
         if self.screen_dirty:
             self.update_vars()
             self.render_screen(self.active_layers())
@@ -463,26 +559,72 @@ class Engine(Updateable):
             action.switch_color = led
             action.switch_brightness = brightness
 
+        back = color[0] if isinstance(color, list) else color
+
         if action.label:
             action.label.text = text
-            action.label.back_color = color[0] if isinstance(color, list) else color
+            action.label.back_color = back
 
-    # Screen settings can be overridden by the first active layer that defines "screen"
-    def render_screen(self, layers):
-        screen = self.screen
+        if action.hint:
+            action.hint.text = self.render(kd.get("hint", "")) if kd else ""
+            action.hint.back_color = _dim(back)
+
+    # Screen settings of the profile, overridden by the first active layer that defines "screen" (attribute by
+    # attribute, tiles index by index). "bar", "barColor" and "main" are the names of profile schema 1.
+    def screen_for(self, layers):
+        screen = dict(self.screen)
         for layer in layers:
             if "screen" in layer:
-                screen = dict(self.screen)
-                screen.update(layer["screen"])
+                override = layer["screen"]
+                for attr, value in override.items():
+                    if attr == "tiles" and "tiles" in screen:
+                        merged = []
+                        for i in range(max(len(screen["tiles"]), len(value))):
+                            tile = dict(screen["tiles"][i]) if i < len(screen["tiles"]) else {}
+                            if i < len(value) and value[i]:
+                                tile.update(value[i])
+                            merged.append(tile)
+                        screen["tiles"] = merged
+                    else:
+                        screen[attr] = value
                 break
 
-        if self.bar and "bar" in screen:
-            self.bar.text = self.render(screen["bar"])
-            if "barColor" in screen:
-                self.bar.back_color = self.color(screen["barColor"])
+        for old, new in (("bar", "status"), ("barColor", "statusColor"), ("main", "message")):
+            if old in screen and not new in screen:
+                screen[new] = screen[old]
+        return screen
 
-        if self.main and "main" in screen:
-            self.main.text = self.render(screen["main"])
+    def render_screen(self, layers):
+        screen = self.screen_for(layers)
+        ui = self.ui
+
+        status_color = self.color(screen.get("statusColor", "BLACK"))
+
+        if ui.get("status", None):
+            ui["status"].text = self.render(screen.get("status", ""))
+            ui["status"].back_color = status_color
+
+        if ui.get("power", None):
+            ui["power"].text = self.render(screen.get("power", ""))
+            ui["power"].back_color = self.color(screen.get("powerColor", None)) or status_color
+
+        tiles = screen.get("tiles", [])
+        labels = ui.get("tiles", [])
+        for i in range(len(labels)):
+            tile = tiles[i] if i < len(tiles) else {}
+            color = self.color(tile.get("color", "DARK_GRAY"))
+            labels[i]["caption"].text = self.render(tile.get("caption", ""))
+            labels[i]["caption"].back_color = _dim(color)
+            labels[i]["value"].text = self.render(tile.get("value", ""))
+            labels[i]["value"].back_color = color
+
+        if ui.get("message", None):
+            if self.flash_text is not None:
+                ui["message"].text = self.flash_text
+                ui["message"].back_color = self.color(self.flash_color) or self.color(screen.get("messageColor", "BLACK"))
+            else:
+                ui["message"].text = self.render(screen.get("message", ""))
+                ui["message"].back_color = self.color(screen.get("messageColor", "BLACK"))
 
 
 # One action per key and trigger group: The primary action handles short press and double click and renders
@@ -498,6 +640,7 @@ class KeyAction(Action):
         self.key = key
         self.primary = primary
         self.switch = None
+        self.hint = None
         self._pending_since = -1
 
     def init(self, appl, switch):

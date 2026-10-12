@@ -13,7 +13,6 @@
     "fb": 0,
     "fc": 0,
     "tun": 0,
-    "msg": "",
     "pw": "USB",
     "pws": -1
   },
@@ -31,16 +30,61 @@
   },
   "vars": [],
   "screen": {
-    "bar": "ANA PW: {pw}{' T+' if tun else ''}",
-    "barColor": "'RED' if tun else ('DARK_PURPLE' if lp else 'DARK_GREEN')"
+    "status": "ANA  {'LOOPER' if lp else 'PLAY'}",
+    "statusColor": "'DARK_PURPLE' if lp else 'DARK_GREEN'",
+    "power": "{('%d%%' % pwp) if pwp >= 0 else ('BAT' if pws == 1 else 'USB')}",
+    "tiles": [
+      {
+        "caption": "MODE",
+        "value": "{AM[am - 1]}",
+        "color": "AMC[am - 1]"
+      },
+      {
+        "caption": "FOOT",
+        "value": "{('A' if fa else '-') + ('B' if fb else '-') + ('C' if fc else '-')}",
+        "color": "'GREEN' if fa or fb or fc else 'DARK_GREEN'"
+      },
+      {
+        "caption": "LOOPER",
+        "value": "{'ON' if lp else 'OFF'}",
+        "color": "'PURPLE' if lp else 'DARK_GRAY'"
+      }
+    ],
+    "message": "",
+    "messageColor": "BLACK"
   },
   "layers": [
     {
+      "name": "Tuner",
+      "when": "tun",
+      "desc": {
+        "en": "While the tuner is on: everything turns red. Hold 3 to close it.",
+        "zh": "调音器打开时：屏幕全部变为红色。长按 3 号键关闭。",
+        "ja": "チューナーがオンのとき：画面全体が赤くなります。3 を長押しで閉じます。",
+        "ko": "튜너가 켜져 있을 때: 화면 전체가 빨간색이 돼요. 3을 길게 눌러 닫으세요."
+      },
+      "screen": {
+        "status": "ANA  TUNER",
+        "statusColor": "RED",
+        "message": "TUNER ON (HOLD 3)",
+        "messageColor": "RED",
+        "tiles": [
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          }
+        ]
+      },
+      "keys": {}
+    },
+    {
       "name": "Looper",
       "when": "lp",
-      "screen": {
-        "main": "LOOPER\n{msg}"
-      },
       "keys": {
         "1": {
           "label": "REC",
@@ -50,8 +94,7 @@
               "cc": 112
             },
             {
-              "set": "msg",
-              "to": "'Rec/Dub'"
+              "flash": "REC/DUB"
             }
           ],
           "long": [
@@ -59,8 +102,7 @@
               "cc": 113
             },
             {
-              "set": "msg",
-              "to": "'Clear'"
+              "flash": "CLEAR"
             }
           ],
           "desc": {
@@ -76,7 +118,8 @@
               "ja": "現在のスロットを消去（CC113）",
               "ko": "현재 슬롯 지우기 (CC113)"
             }
-          }
+          },
+          "hint": "CLEAR"
         },
         "2": {
           "label": "PLAY",
@@ -86,8 +129,7 @@
               "cc": 111
             },
             {
-              "set": "msg",
-              "to": "'Play/Stop'"
+              "flash": "PLAY/STOP"
             }
           ],
           "desc": {
@@ -107,8 +149,7 @@
               "cc": 114
             },
             {
-              "set": "msg",
-              "to": "'Undo'"
+              "flash": "UNDO"
             }
           ],
           "long": [
@@ -116,8 +157,7 @@
               "cc": 115
             },
             {
-              "set": "msg",
-              "to": "'Redo'"
+              "flash": "REDO"
             }
           ],
           "desc": {
@@ -133,7 +173,8 @@
               "ja": "やり直し（CC115）",
               "ko": "다시 실행 (Redo, CC115)"
             }
-          }
+          },
+          "hint": "REDO"
         },
         "A": {
           "label": "SL-",
@@ -143,8 +184,7 @@
               "cc": 118
             },
             {
-              "set": "msg",
-              "to": "'Slot -'"
+              "flash": "SLOT -"
             }
           ],
           "desc": {
@@ -164,8 +204,7 @@
               "cc": 117
             },
             {
-              "set": "msg",
-              "to": "'Slot +'"
+              "flash": "SLOT +"
             }
           ],
           "desc": {
@@ -187,10 +226,6 @@
             },
             {
               "cc": 110
-            },
-            {
-              "set": "msg",
-              "to": "''"
             }
           ],
           "desc": {
@@ -213,9 +248,6 @@
     {
       "name": "Play",
       "when": "not lp",
-      "screen": {
-        "main": "{AM[am - 1]}\n{msg}"
-      },
       "keys": {
         "1": {
           "label": "FA{'+' if fa else '-'}",
@@ -227,6 +259,9 @@
             {
               "cc": 17,
               "val": "127 if fa else 0"
+            },
+            {
+              "flash": "FOOT A {'ON' if fa else 'OFF'}"
             }
           ],
           "long": [
@@ -234,8 +269,7 @@
               "cc": 106
             },
             {
-              "set": "msg",
-              "to": "'Preset -'"
+              "flash": "PRESET -"
             }
           ],
           "desc": {
@@ -251,6 +285,10 @@
               "ja": "前のプリセット（CC106）",
               "ko": "이전 프리셋 (CC106)"
             }
+          },
+          "hint": {
+            "*": "PRESET -",
+            "mc10": "PRE -"
           }
         },
         "2": {
@@ -263,6 +301,9 @@
             {
               "cc": 18,
               "val": "127 if fb else 0"
+            },
+            {
+              "flash": "FOOT B {'ON' if fb else 'OFF'}"
             }
           ],
           "long": [
@@ -270,8 +311,7 @@
               "cc": 105
             },
             {
-              "set": "msg",
-              "to": "'Preset +'"
+              "flash": "PRESET +"
             }
           ],
           "desc": {
@@ -287,6 +327,10 @@
               "ja": "次のプリセット（CC105）",
               "ko": "다음 프리셋 (CC105)"
             }
+          },
+          "hint": {
+            "*": "PRESET +",
+            "mc10": "PRE +"
           }
         },
         "3": {
@@ -299,6 +343,9 @@
             {
               "cc": 19,
               "val": "127 if fc else 0"
+            },
+            {
+              "flash": "FOOT C {'ON' if fc else 'OFF'}"
             }
           ],
           "long": [
@@ -307,6 +354,9 @@
             },
             {
               "cc": 86
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
             }
           ],
           "desc": {
@@ -322,7 +372,8 @@
               "ja": "チューナーの表示/非表示（CC86）",
               "ko": "튜너 열기/닫기 (CC86)"
             }
-          }
+          },
+          "hint": "TUNER"
         },
         "A": {
           "label": "SC-",
@@ -332,8 +383,7 @@
               "cc": 109
             },
             {
-              "set": "msg",
-              "to": "'Scene -'"
+              "flash": "SCENE -"
             }
           ],
           "long": [
@@ -341,8 +391,7 @@
               "cc": 104
             },
             {
-              "set": "msg",
-              "to": "'Bank -'"
+              "flash": "BANK -"
             }
           ],
           "desc": {
@@ -358,7 +407,8 @@
               "ja": "前のバンク（CC104）",
               "ko": "이전 뱅크 (CC104)"
             }
-          }
+          },
+          "hint": "BANK -"
         },
         "B": {
           "label": "SC+",
@@ -368,8 +418,7 @@
               "cc": 108
             },
             {
-              "set": "msg",
-              "to": "'Scene +'"
+              "flash": "SCENE +"
             }
           ],
           "long": [
@@ -377,8 +426,7 @@
               "cc": 103
             },
             {
-              "set": "msg",
-              "to": "'Bank +'"
+              "flash": "BANK +"
             }
           ],
           "desc": {
@@ -394,7 +442,8 @@
               "ja": "次のバンク（CC103）",
               "ko": "다음 뱅크 (CC103)"
             }
-          }
+          },
+          "hint": "BANK +"
         },
         "C": {
           "label": "{'DBL?' if _pend == 'C' else AM[am - 1]}",
@@ -409,6 +458,9 @@
             {
               "cc": 85,
               "val": "am"
+            },
+            {
+              "flash": "MODE {AM[am - 1]}"
             }
           ],
           "double": [
@@ -423,10 +475,6 @@
             },
             {
               "cc": 110
-            },
-            {
-              "set": "msg",
-              "to": "''"
             }
           ],
           "desc": {
@@ -448,6 +496,10 @@
               "ja": "ルーパー画面を開く（CC110）",
               "ko": "루퍼 화면 열기 (CC110)"
             }
+          },
+          "hint": {
+            "*": "LOOPER",
+            "mc10": "LOOP"
           }
         }
       },
@@ -470,6 +522,9 @@
             },
             {
               "cc": 86
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
             }
           ],
           "desc": {
@@ -490,6 +545,9 @@
             },
             {
               "cc": 110
+            },
+            {
+              "flash": "LOOPER {'ON' if lp else 'OFF'}"
             }
           ],
           "desc": {
@@ -509,8 +567,7 @@
               "cc": 105
             },
             {
-              "set": "msg",
-              "to": "'Preset +'"
+              "flash": "PRESET +"
             }
           ],
           "desc": {
@@ -530,8 +587,7 @@
               "cc": 106
             },
             {
-              "set": "msg",
-              "to": "'Preset -'"
+              "flash": "PRESET -"
             }
           ],
           "desc": {

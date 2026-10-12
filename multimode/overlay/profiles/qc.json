@@ -12,7 +12,7 @@
     "qp": 2,
     "tun": 0,
     "ms": 0,
-    "sc": 0,
+    "sc": -1,
     "gs": 0,
     "pw": "USB",
     "pws": -1
@@ -74,6 +74,11 @@
         "PURPLE",
         "ORANGE"
       ]
+    ],
+    "SLOTS": "ABCD",
+    "PAGES": [
+      "I",
+      "II"
     ]
   },
   "vars": [
@@ -96,31 +101,90 @@
     [
       "sfx",
       "'O' if gs else 'C'"
+    ],
+    [
+      "scn",
+      "'-' if sc < 0 else 'ABCD'[sc % 4]"
+    ],
+    [
+      "scp",
+      "'' if sc < 0 else ('I' if sc < 4 else 'II')"
     ]
   ],
   "screen": {
-    "bar": "PW: {pw}{' T+' if tun else ''}",
-    "barColor": "'RED' if tun else ('DARK_BLUE' if gig else 'DARK_YELLOW')"
+    "status": "QC  {'GIG VIEW' if gig else 'CHAIN'}{'  FLIP' if gig and gs else ''}{'' if gig else '  MP ' + PAGES[mp - 1]}",
+    "statusColor": "'DARK_BLUE' if gig else 'DARK_YELLOW'",
+    "power": "{('%d%%' % pwp) if pwp >= 0 else ('BAT' if pws == 1 else 'USB')}",
+    "tiles": [
+      {
+        "caption": "MODE",
+        "value": "{MODES[ms]}",
+        "color": "(MCOOL if gig else MWARM)[ms]"
+      },
+      {
+        "caption": "QC PAGE",
+        "value": "{PAGES[qp - 1]}",
+        "color": "pl if qp == 1 else pr"
+      },
+      {
+        "caption": "{'SCENE' if sc < 0 else 'SCENE ' + scp}",
+        "value": "{scn}",
+        "color": "'DARK_GREEN' if sc < 0 else 'GREEN'"
+      }
+    ],
+    "message": "",
+    "messageColor": "BLACK"
   },
   "layers": [
     {
+      "name": "Tuner",
+      "when": "tun",
+      "desc": {
+        "en": "While the tuner is on: everything turns red. Hold 1 to turn it off.",
+        "zh": "调音器打开时：屏幕全部变为红色。长按 1 号键关闭。",
+        "ja": "チューナーがオンのとき：画面全体が赤くなります。1 を長押しでオフ。",
+        "ko": "튜너가 켜져 있을 때: 화면 전체가 빨간색이 돼요. 1을 길게 눌러 끄세요."
+      },
+      "screen": {
+        "status": "QC  TUNER",
+        "statusColor": "RED",
+        "message": "TUNER ON (HOLD 1)",
+        "messageColor": "RED",
+        "tiles": [
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          }
+        ]
+      },
+      "keys": {}
+    },
+    {
       "name": "Gig View",
       "when": "gig",
-      "screen": {
-        "main": "GV {'Current' if gs == 0 else 'Opposite'} QP{qp}\n{MODES[ms]}"
-      },
       "keys": {
         "1": {
-          "label": "A{sfx}",
-          "color": "'GRAY' if gs else PCOOL[cur - 1][0]",
+          "label": "A {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][0]",
           "short": [
             {
               "cc": "FS[cur - 1][0]"
+            },
+            {
+              "flash": "FS A  PAGE {PAGES[cur - 1]}"
             }
           ],
           "long": [
             {
               "cc": "FS[opp - 1][0]"
+            },
+            {
+              "flash": "FS A  PAGE {PAGES[opp - 1]}"
             }
           ],
           "desc": {
@@ -136,19 +200,26 @@
               "ja": "フットスイッチ A、反対の QC ページ（反転すると現在のページ）",
               "ko": "풋스위치 A, 반대 QC 페이지 (뒤집으면 현재 페이지)"
             }
-          }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
         },
         "2": {
-          "label": "B{sfx}",
-          "color": "'GRAY' if gs else PCOOL[cur - 1][1]",
+          "label": "B {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][1]",
           "short": [
             {
               "cc": "FS[cur - 1][1]"
+            },
+            {
+              "flash": "FS B  PAGE {PAGES[cur - 1]}"
             }
           ],
           "long": [
             {
               "cc": "FS[opp - 1][1]"
+            },
+            {
+              "flash": "FS B  PAGE {PAGES[opp - 1]}"
             }
           ],
           "desc": {
@@ -164,19 +235,26 @@
               "ja": "フットスイッチ B、反対の QC ページ（反転すると現在のページ）",
               "ko": "풋스위치 B, 반대 QC 페이지 (뒤집으면 현재 페이지)"
             }
-          }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
         },
         "A": {
-          "label": "C{sfx}",
-          "color": "'GRAY' if gs else PCOOL[cur - 1][2]",
+          "label": "C {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][2]",
           "short": [
             {
               "cc": "FS[cur - 1][2]"
+            },
+            {
+              "flash": "FS C  PAGE {PAGES[cur - 1]}"
             }
           ],
           "long": [
             {
               "cc": "FS[opp - 1][2]"
+            },
+            {
+              "flash": "FS C  PAGE {PAGES[opp - 1]}"
             }
           ],
           "desc": {
@@ -192,19 +270,26 @@
               "ja": "フットスイッチ C、反対の QC ページ（反転すると現在のページ）",
               "ko": "풋스위치 C, 반대 QC 페이지 (뒤집으면 현재 페이지)"
             }
-          }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
         },
         "B": {
-          "label": "D{sfx}",
-          "color": "'GRAY' if gs else PCOOL[cur - 1][3]",
+          "label": "D {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][3]",
           "short": [
             {
               "cc": "FS[cur - 1][3]"
+            },
+            {
+              "flash": "FS D  PAGE {PAGES[cur - 1]}"
             }
           ],
           "long": [
             {
               "cc": "FS[opp - 1][3]"
+            },
+            {
+              "flash": "FS D  PAGE {PAGES[opp - 1]}"
             }
           ],
           "desc": {
@@ -220,7 +305,8 @@
               "ja": "フットスイッチ D、反対の QC ページ（反転すると現在のページ）",
               "ko": "풋스위치 D, 반대 QC 페이지 (뒤집으면 현재 페이지)"
             }
-          }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
         }
       },
       "desc": {
@@ -233,17 +319,17 @@
     {
       "name": "Chain",
       "when": "not gig",
-      "screen": {
-        "main": "CH\n{MODES[ms]} MP{mp} QP{qp}"
-      },
       "keys": {
         "1": {
-          "label": "A{mp}",
+          "label": "A {PAGES[mp - 1]}",
           "color": "PWARM[mp - 1][0]",
           "led": "['RED', 'RED', PWARM[mp - 1][0]] if tun else PWARM[mp - 1][0]",
           "short": [
             {
               "cc": "FS[mp - 1][0]"
+            },
+            {
+              "flash": "FS A  PAGE {PAGES[mp - 1]}"
             }
           ],
           "long": [
@@ -253,6 +339,9 @@
             {
               "cc": 45,
               "val": "127 if tun else 0"
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
             }
           ],
           "desc": {
@@ -268,20 +357,27 @@
               "ja": "チューナーのオン/オフ（CC45）",
               "ko": "튜너 켜기/끄기 (CC45)"
             }
-          }
+          },
+          "hint": "TUNER"
         },
         "2": {
-          "label": "B{mp}",
+          "label": "B {PAGES[mp - 1]}",
           "color": "PWARM[mp - 1][1]",
           "short": [
             {
               "cc": "FS[mp - 1][1]"
+            },
+            {
+              "flash": "FS B  PAGE {PAGES[mp - 1]}"
             }
           ],
           "long": [
             {
               "set": "mp",
               "to": "3 - mp"
+            },
+            {
+              "flash": "MIDI PAGE {PAGES[mp - 1]}"
             }
           ],
           "desc": {
@@ -297,14 +393,21 @@
               "ja": "内部ページ MP を 1↔2 で切り替え。QC には何も送りません",
               "ko": "내부 페이지 MP 1↔2 전환. QC에는 아무것도 보내지 않아요"
             }
+          },
+          "hint": {
+            "*": "MP SWAP",
+            "mc10": "MP PG"
           }
         },
         "A": {
-          "label": "C{mp}",
+          "label": "C {PAGES[mp - 1]}",
           "color": "PWARM[mp - 1][2]",
           "short": [
             {
               "cc": "FS[mp - 1][2]"
+            },
+            {
+              "flash": "FS C  PAGE {PAGES[mp - 1]}"
             }
           ],
           "long": [
@@ -320,6 +423,9 @@
             {
               "set": "qp",
               "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
             }
           ],
           "desc": {
@@ -335,14 +441,21 @@
               "ja": "シーン −1（CC43、A から H へ循環）",
               "ko": "씬 −1 (CC43, A에서 H로 순환)"
             }
+          },
+          "hint": {
+            "*": "SCENE -",
+            "mc10": "SCN -"
           }
         },
         "B": {
-          "label": "D{mp}",
+          "label": "D {PAGES[mp - 1]}",
           "color": "PWARM[mp - 1][3]",
           "short": [
             {
               "cc": "FS[mp - 1][3]"
+            },
+            {
+              "flash": "FS D  PAGE {PAGES[mp - 1]}"
             }
           ],
           "long": [
@@ -358,6 +471,9 @@
             {
               "set": "qp",
               "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
             }
           ],
           "desc": {
@@ -373,6 +489,10 @@
               "ja": "シーン +1（CC43、H から A へ循環）",
               "ko": "씬 +1 (CC43, H에서 A로 순환)"
             }
+          },
+          "hint": {
+            "*": "SCENE +",
+            "mc10": "SCN +"
           }
         }
       },
@@ -399,11 +519,17 @@
             {
               "cc": 47,
               "val": "ms"
+            },
+            {
+              "flash": "MODE {MODES[ms]}"
             }
           ],
           "double": [
             {
               "toggle": "gs"
+            },
+            {
+              "flash": "{'FLIPPED' if gs else 'NORMAL'} PAGES"
             }
           ],
           "long": [
@@ -414,6 +540,9 @@
             {
               "cc": 64,
               "val": "127 if qp == 2 else 0"
+            },
+            {
+              "flash": "QC PAGE {PAGES[qp - 1]}"
             }
           ],
           "desc": {
@@ -435,6 +564,10 @@
               "ja": "QC のフットスイッチページを I↔II で切り替え（CC64）。LED 左 = I、右 = II",
               "ko": "QC 풋스위치 페이지 I↔II 전환 (CC64). LED 왼쪽=I, 오른쪽=II"
             }
+          },
+          "hint": {
+            "*": "PAGE SWAP",
+            "mc10": "PAGE"
           }
         },
         "C": {
@@ -444,6 +577,9 @@
             {
               "cc": 44,
               "val": 127
+            },
+            {
+              "flash": "TAP"
             }
           ],
           "long": [
@@ -453,6 +589,9 @@
             {
               "cc": 46,
               "val": "127 if gig else 0"
+            },
+            {
+              "flash": "GIG VIEW {'ON' if gig else 'OFF'}"
             }
           ],
           "desc": {
@@ -468,6 +607,10 @@
               "ja": "Gig View のオン/オフ（CC46）",
               "ko": "Gig View 켜기/끄기 (CC46)"
             }
+          },
+          "hint": {
+            "*": "{'GIG OFF' if gig else 'GIG VIEW'}",
+            "mc10": "GIG"
           }
         },
         "4": {
@@ -480,6 +623,9 @@
             {
               "cc": 45,
               "val": "127 if tun else 0"
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
             }
           ],
           "desc": {
@@ -492,12 +638,15 @@
           }
         },
         "D": {
-          "label": "MP{mp}",
+          "label": "MP {PAGES[mp - 1]}",
           "color": "PWARM[mp - 1][0]",
           "short": [
             {
               "set": "mp",
               "to": "3 - mp"
+            },
+            {
+              "flash": "MIDI PAGE {PAGES[mp - 1]}"
             }
           ],
           "desc": {
@@ -525,6 +674,9 @@
             {
               "set": "qp",
               "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
             }
           ],
           "desc": {
@@ -552,6 +704,9 @@
             {
               "set": "qp",
               "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
             }
           ],
           "desc": {

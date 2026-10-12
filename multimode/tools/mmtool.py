@@ -77,8 +77,11 @@ def cmd_validate(args):
     errors = []
     for device in devices:
         for mode in modes["modes"]:
-            errs = sim.validate(mode, device)
+            warnings = []
+            errs = sim.validate(mode, device, warnings = warnings)
             print(("OK   " if not errs else "FAIL ") + device + " / " + mode)
+            for w in sorted(set(warnings)):
+                print("  WARN " + w)
             errors += errs
 
     for e in errors:
@@ -175,6 +178,15 @@ def build_site(out):
 
     with open(os.path.join(out, "firmware", "manifest.json"), "w") as f:
         json.dump({"version": ver, "files": files}, f, indent = 1)
+
+    # Font widths for the editor's overflow check
+    shutil.copyfile(os.path.join(TOOLS, "font_metrics.json"), os.path.join(out, "fonts.json"))
+
+    # Screen layouts of all devices for the editor's preview (same definition as on the device)
+    sys.path.insert(0, os.path.join(OVERLAY, "lib"))
+    from multimode.devices import DEVICES, screen_layout
+    with open(os.path.join(out, "layout.json"), "w") as f:
+        json.dump({d: screen_layout(d) for d in DEVICES}, f)
 
     with open(os.path.join(out, "profiles", "index.json"), "w") as f:
         json.dump(sorted(n[:-5] for n in os.listdir(os.path.join(out, "profiles")) if n.endswith(".json") and not n.endswith(".desc.json") and n not in ("modes.json", "index.json")), f)
