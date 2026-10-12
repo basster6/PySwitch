@@ -1,10 +1,10 @@
 # Weekly check for new upstream PySwitch commits (Tunetown/PySwitch main). If there are any, merges them on top
-# of qc-local-mods, runs the tests and opens a pull request for review (or an issue on conflicts).
+# of main, runs the tests and opens a pull request for review (or an issue on conflicts).
 #
 # Security: the upstream code is third party code. It is only executed in the "test" job, which has a read-only
 # token that is not stored in the checkout, so it cannot push or change anything. The "publish" job, which may
 # push a branch and open the pull request, only merges with git (no upstream code is executed there).
-# Nothing is merged into qc-local-mods automatically.
+# Nothing is merged into main automatically.
 name: Upstream sync
 
 on:
@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
-          ref: qc-local-mods
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
-          ref: qc-local-mods
+          ref: main
           fetch-depth: 0
 
       - name: Open a pull request
@@ -95,9 +95,9 @@ jobs:
           git switch -c "$branch"
           git merge --no-edit "$UPSTREAM"
           git push origin "$branch"
-          gh pr create --base qc-local-mods --head "$branch" \
+          gh pr create --base main --head "$branch" \
             --title "Upstream PySwitch: $COUNT new commit(s)" \
-            --body "Merged Tunetown/PySwitch main ($UPSTREAM) into qc-local-mods. Multimode tests, profile validation and the PySwitch test suite passed. Please test on the device before merging."
+            --body "Merged Tunetown/PySwitch main ($UPSTREAM) into main. Multimode tests, profile validation and the PySwitch test suite passed. Please test on the device before merging."
 
       - name: Report conflicts
         if: needs.test.outputs.conflict == 'true'
@@ -107,5 +107,5 @@ jobs:
           CONFLICTS: ${{ needs.test.outputs.conflicts }}
         run: |
           gh issue create --title "Upstream PySwitch merge conflicts" \
-            --body "Merging Tunetown/PySwitch main ($COUNT new commits) into qc-local-mods conflicts in: $CONFLICTS. Merge locally: git fetch origin && git merge origin/main" \
+            --body "Merging Tunetown/PySwitch main ($COUNT new commits) into main conflicts in: $CONFLICTS. Merge locally: git fetch origin && git merge origin/main" \
           || echo "Could not open an issue (issues may be disabled). Conflicts: $CONFLICTS"

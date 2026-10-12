@@ -15,6 +15,15 @@ Features are:
 
 - Free MIDI routing capatbilities for MIDI over USB and/or DIN
 
+## Multimode (this fork): web editor and multiple modes
+
+This fork adds **multimode**: switch mappings as JSON profiles (e.g. Quad Cortex mini and Anagram on one
+controller), edited in a web editor and saved straight to the device (desktop Chrome / Edge). Works on the
+MIDI Captain Nano 4, Mini 6 and 10.
+
+- Editor: https://basster6.github.io/PySwitch/
+- Documentation: [multimode/README.md](multimode/README.md)
+
 ## Custom Example Summary: Quad Cortex / MIDICaptain Mini 6 (Pages and Multi-Action)
 
 This repository includes a custom example at:

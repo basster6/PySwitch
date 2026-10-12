@@ -1,14 +1,14 @@
 # Tests the multimode engine and profiles, builds the web editor including the firmware files,
 # and publishes it to GitHub Pages.
 #
-# Security: runs only for pushes to qc-local-mods (write access needed) and manual runs. The build job has a
+# Security: runs only for pushes to main (write access needed) and manual runs. The build job has a
 # read-only token which is not stored in the checkout; only the deploy job may write to Pages. Actions are
 # pinned to commit SHAs (the tag in the comment is the release they belong to).
 name: Multimode editor
 
 on:
   push:
-    branches: [qc-local-mods]
+    branches: [main]
   workflow_dispatch:
 
 permissions: {}

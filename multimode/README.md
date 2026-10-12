@@ -125,4 +125,4 @@ python3 -m unittest discover -s multimode/tests
 
 ## 라이선스
 
-PySwitch(© Thomas Weber)의 GPLv3를 따릅니다. 이 폴더의 파일은 qc-local-mods 포크에서 추가했습니다 (2026, basster6). Adafruit 라이브러리와 폰트는 각자의 라이선스(`content/` 참고)를 따릅니다. Quad Cortex(Neural DSP), Anagram, MIDI Captain(Paint Audio)은 각 소유자의 상표이며, 이 프로젝트는 제조사와 관계가 없습니다.
+PySwitch(© Thomas Weber)의 GPLv3를 따릅니다. 이 폴더의 파일은 basster6/PySwitch 포크에서 추가했습니다 (2026, basster6). Adafruit 라이브러리와 폰트는 각자의 라이선스(`content/` 참고)를 따릅니다. Quad Cortex(Neural DSP), Anagram, MIDI Captain(Paint Audio)은 각 소유자의 상표이며, 이 프로젝트는 제조사와 관계가 없습니다.

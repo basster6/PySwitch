@@ -6,7 +6,7 @@
 # short press, long press and double click. Values can be literals or Python expressions evaluated against the
 # state, labels are templates with {expression} placeholders. See /profiles/README.md for the format.
 #
-# Part of the qc-local-mods fork of PySwitch (GPLv3), (C) 2026 basster6. Based on PySwitch by Thomas Weber.
+# Part of the multimode extension in the basster6/PySwitch fork (GPLv3), (C) 2026 basster6. Based on PySwitch by Thomas Weber.
 #
 ##############################################################################################################################################
 
