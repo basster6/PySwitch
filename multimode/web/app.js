@@ -325,13 +325,14 @@ function renderUsage() {
         h("tbody", {}, rows))));
   });
 
-  $("#view-usage").replaceChildren(
+  $("#view-usage").replaceChildren(...[
     p.desc ? h("p", { class: "lead" }, p.desc) : null,
     h("section", { class: "usage-layer" },
       h("h3", {}, "전원 켤 때 누르고 있기"),
       h("ul", { class: "bootlist" }, boot.map(([k, t]) => h("li", {}, h("span", { class: "kname" }, k), t)))),
     ...sections,
-    h("p", { class: "hint" }, "위쪽 레이어부터 조건이 맞는 첫 레이어가 키 동작을 정해요. 흐린 글씨는 설명이 없어 실제 MIDI 메시지로 대신 보여준 거예요. 설명은 '키 매핑' 탭에서 고칠 수 있어요."));
+    h("p", { class: "hint" }, "위쪽 레이어부터 조건이 맞는 첫 레이어가 키 동작을 정해요. 흐린 글씨는 설명이 없어 실제 MIDI 메시지로 대신 보여준 거예요. 설명은 '키 매핑' 탭에서 고칠 수 있어요."),
+  ].filter(Boolean));
 }
 
 // Expression namespace of the selected profile in its initial state (for previews)
