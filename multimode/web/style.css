@@ -209,6 +209,22 @@ textarea.json { min-height: 60vh; white-space: pre; }
 .klabel { font: 700 15px var(--f-display); }
 .bootlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 
+/* Install wizard */
+.install { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s4); }
+.install .lead { margin: 0; font-size: 15px; max-width: 65ch; }
+.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: var(--s3); padding: var(--s4); border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.step-no { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--f-mono); background: var(--metal); }
+.step.done .step-no { background: var(--ok); color: var(--panel); }
+.step.warn .step-no { background: var(--danger); color: var(--panel); }
+.step.later { opacity: .6; }
+.step-body { display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start; min-width: 0; }
+.step-body h3, .restore h3 { margin: 0; font: 700 17px var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+.step-body p, .step-body ol { margin: 0; max-width: 65ch; }
+.step-body ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.step-body .field { align-self: stretch; max-width: 320px; }
+.restore { display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start; padding-top: var(--s3); border-top: 1px solid var(--line); }
+a { color: var(--accent); }
+
 /* Editor */
 .editor { display: flex; flex-direction: column; gap: var(--s4); }
 .editor .ed-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }

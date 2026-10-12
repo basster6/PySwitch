@@ -147,7 +147,13 @@ async function connect() {
   }
   S.dir = dir;
   S.boot = boot.split("\n")[0].trim();
+  S.cp = (S.boot.match(/CircuitPython (\d+)\.(\d+)\.?(\d*)/) || []).slice(1).map(Number);
   S.installed = (await readText(dir, "lib/multimode/VERSION"))?.trim() || null;
+  S.kind = S.installed ? "multimode" : (await exists(dir, "lib/pyswitch")) ? "pyswitch" : "other";
+  S.backup = null;
+  S.skipBackup = false;
+  S.installDone = false;
+  if (S.kind !== "multimode") S.view = "install";
 
   const modesText = await readText(dir, "profiles/modes.json");
   if (modesText) {
@@ -167,7 +173,7 @@ async function connect() {
       notice("장치의 프로필을 읽지 못했어요 (" + e.message + "). 기본 프로필을 보여줍니다.", "error");
     }
   } else {
-    notice("이 장치에는 아직 multimode 펌웨어가 없어요. '펌웨어 설치·업데이트'를 먼저 실행한 뒤 저장하세요.");
+    notice("");
   }
   S.dirty = false;
   render();
@@ -215,7 +221,7 @@ async function save() {
   render();
 }
 
-async function installFirmware() {
+async function installFirmware(fromWizard = false) {
   if (!S.dir || !S.manifest) return;
   const files = S.manifest.files;
   let written = 0;
@@ -230,6 +236,7 @@ async function installFirmware() {
       await writeFile(S.dir, f.path, new Uint8Array(await r.arrayBuffer()));
       written++;
     }
+    if (fromWizard) return;
     const hasProfiles = await readText(S.dir, "profiles/modes.json");
     if (!hasProfiles) {
       for (const n of S.modes.modes) await writeFile(S.dir, `profiles/${n}.json`, JSON.stringify(S.profiles[n], null, 2) + "\n");
@@ -238,9 +245,171 @@ async function installFirmware() {
     S.installed = S.manifest.version;
     notice(`펌웨어 ${S.manifest.version} 설치 완료: 파일 ${written}개를 새로 썼어요 (나머지는 이미 최신).`, "ok");
   } catch (e) {
+    if (fromWizard) throw e;
     notice("펌웨어 설치가 중간에 멈췄어요: " + e.message + ". 다시 실행하면 남은 파일만 씁니다.", "error");
   }
+  if (!fromWizard) render();
+}
+
+/* ---------- Install wizard ---------- */
+
+// Entries the operating system creates on the drive; never copied or deleted
+const SYSTEM_ENTRIES = new Set([".fseventsd", ".Trashes", ".Spotlight-V100", "System Volume Information", ".metadata_never_index", ".DS_Store", "boot_out.txt"]);
+// Kept on the device when cleaning up (the original firmware needs it for a later restore)
+const KEEP_ENTRIES = new Set(["license", "License", "LICENSE"]);
+const SUPPORTED_CP = 7;   // The .mpy libraries of PySwitch are bytecode version 5 (CircuitPython 7.x)
+
+async function exists(dir, path) {
+  let d = dir;
+  for (const part of path.split("/")) {
+    try { d = await d.getDirectoryHandle(part); }
+    catch { try { await d.getFileHandle(part); return true; } catch { return false; } }
+  }
+  return true;
+}
+
+async function copyTree(src, dst, progress, skip = SYSTEM_ENTRIES) {
+  let n = 0;
+  for await (const [name, handle] of src.entries()) {
+    if (skip.has(name) || name.startsWith("._")) continue;
+    if (handle.kind === "directory") {
+      n += await copyTree(handle, await dst.getDirectoryHandle(name, { create: true }), progress, skip);
+    } else {
+      const w = await (await dst.getFileHandle(name, { create: true })).createWritable();
+      await w.write(await handle.getFile());
+      await w.close();
+      progress(++n, name);
+    }
+  }
+  return n;
+}
+
+async function backupDevice() {
+  let target;
+  try { target = await window.showDirectoryPicker({ id: "mcbackup", mode: "readwrite", startIn: "documents" }); } catch { return; }
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "").replace(/^(\d{8})/, "$1-");
+  const name = `midicaptain-backup-${stamp}`;
+  try {
+    const dst = await target.getDirectoryHandle(name, { create: true });
+    await writeFile(dst, "boot_out.txt", (await readText(S.dir, "boot_out.txt")) || "");
+    const n = await copyTree(S.dir, dst, (i, f) => notice(`백업 중 ${i}: ${f}`));
+    S.backup = { name, files: n };
+    notice(`백업했어요: 선택한 폴더 안의 '${name}' (파일 ${n}개).`, "ok");
+  } catch (e) {
+    notice("백업하지 못했어요: " + e.message + ". 다른 폴더(예: 문서)를 골라 다시 시도하세요.", "error");
+  }
   render();
+}
+
+async function cleanDevice() {
+  const removed = [];
+  for await (const [name] of S.dir.entries()) {
+    if (SYSTEM_ENTRIES.has(name) || KEEP_ENTRIES.has(name) || name.startsWith("._")) continue;
+    await S.dir.removeEntry(name, { recursive: true });
+    removed.push(name);
+  }
+  return removed;
+}
+
+async function runInstall() {
+  const clean = $("#instClean")?.checked;
+  const dev = $("#instDevice")?.value || S.modes.device;
+  try {
+    if (clean) {
+      notice("기존 파일을 지우는 중…");
+      await cleanDevice();
+    }
+    S.modes.device = dev;
+    await installFirmware(true);
+    for (const n of S.modes.modes) await writeFile(S.dir, `profiles/${n}.json`, JSON.stringify(S.profiles[n], null, 2) + "\n");
+    await writeFile(S.dir, "profiles/modes.json", JSON.stringify(S.modes, null, 2) + "\n");
+    S.kind = "multimode";
+    S.dirty = false;
+    S.installDone = true;
+    notice("설치를 마쳤어요. 아래 '마무리' 순서대로 장치를 다시 켜세요.", "ok");
+  } catch (e) {
+    notice("설치가 중간에 멈췄어요: " + e.message + ". 드라이브 연결을 확인하고 다시 실행하세요. 백업은 그대로 있어요.", "error");
+  }
+  render();
+}
+
+async function restoreBackup() {
+  let src;
+  try { src = await window.showDirectoryPicker({ id: "mcbackup", mode: "read" }); } catch { return; }
+  if (!(await readText(src, "boot_out.txt")) || !(await exists(src, "code.py"))) {
+    notice("백업 폴더가 아니에요. 'midicaptain-backup-…' 폴더 자체를 선택하세요.", "error");
+    return;
+  }
+  try {
+    notice("장치 파일을 지우는 중…");
+    await cleanDevice();
+    const n = await copyTree(src, S.dir, (i, f) => notice(`복원 중 ${i}: ${f}`));
+    S.kind = "other"; S.installed = null;
+    notice(`복원했어요 (파일 ${n}개). 스위치를 누르지 않고 장치를 다시 켜면 백업한 펌웨어로 돌아가요.`, "ok");
+  } catch (e) {
+    notice("복원이 중간에 멈췄어요: " + e.message + ". 다시 실행하면 처음부터 다시 복사해요.", "error");
+  }
+  render();
+}
+
+function renderInstall() {
+  const v = $("#view-install");
+  const step = (n, title, state, ...body) => h("section", { class: "step " + state },
+    h("div", { class: "step-no", "aria-hidden": "true" }, state === "done" ? "✓" : String(n)),
+    h("div", { class: "step-body" }, h("h3", {}, title), ...body));
+
+  if (!S.dir) {
+    v.replaceChildren(
+      h("p", { class: "lead" }, "순정 펌웨어나 기존 PySwitch가 들어 있는 MIDI Captain에 이 펌웨어를 설치해요. 원래 파일은 먼저 PC에 백업하고, 언제든 되돌릴 수 있어요."),
+      step(1, "장치 드라이브 열기", "todo",
+        h("p", {}, "USB 케이블로 PC에 연결한 뒤, ", h("b", {}, "1번 스위치(왼쪽 위)를 누른 채"), " 장치 전원을 켜세요. MIDICAPTAIN이라는 드라이브가 나타나요."),
+        h("button", { class: "primary", onclick: connect }, "장치 드라이브 연결"),
+        h("p", { class: "hint" }, "데스크톱 Chrome 또는 Edge가 필요해요. 드라이브 최상위 폴더를 고르고, 파일 수정 권한을 허용하세요.")));
+    return;
+  }
+
+  const cpOk = S.cp?.[0] === SUPPORTED_CP;
+  const kindText = { multimode: "multimode 설치됨", pyswitch: "PySwitch (multimode 없음)", other: "순정 또는 다른 펌웨어" }[S.kind];
+
+  const cpBody = cpOk
+    ? [h("p", {}, `${S.boot.replace("Adafruit ", "")} · ${kindText}`)]
+    : [
+        h("p", { class: "err" }, `이 장치는 CircuitPython ${S.cp.join(".")}이에요. 이 펌웨어는 CircuitPython 7.x에서만 동작해요 (PySwitch에 포함된 .mpy 라이브러리가 7.x용).`),
+        h("ol", {},
+          h("li", {}, "아래 2단계 백업을 먼저 하세요."),
+          h("li", {}, h("a", { href: "https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/raspberry_pi_pico/en_US/", target: "_blank", rel: "noopener" }, "CircuitPython 7.3.3 (raspberry_pi_pico, en_US) .uf2"), " 파일을 받으세요."),
+          h("li", {}, "왼쪽 '시리얼 (재시작·부트로더)'에서 'UF2 부트로더로 재시작' → '.uf2 굽기'를 실행하세요."),
+          h("li", {}, "다시 1번 스위치를 누른 채 켜고, 이 페이지에서 드라이브를 다시 연결하세요.")),
+      ];
+
+  const backupDone = !!S.backup;
+  const allowNoBackup = S.kind !== "other";
+  const canInstall = cpOk && (backupDone || (allowNoBackup && S.skipBackup));
+
+  v.replaceChildren(
+    step(1, "장치 확인", cpOk ? "done" : "warn", ...cpBody),
+    step(2, "원래 파일 백업", backupDone ? "done" : "todo",
+      h("p", {}, "장치의 모든 파일을 PC 폴더로 복사해요. 순정 펌웨어는 다시 받을 수 없으니 꼭 보관하세요 (특히 license 폴더)."),
+      h("button", { class: backupDone ? "" : "primary", onclick: backupDevice }, backupDone ? "다시 백업" : "백업할 폴더 선택"),
+      backupDone ? h("p", { class: "hint" }, `저장됨: ${S.backup.name} (파일 ${S.backup.files}개)`) : null,
+      allowNoBackup && !backupDone ? h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instSkip", checked: !!S.skipBackup, onchange: e => { S.skipBackup = e.target.checked; render(); } }), h("span", {}, "백업 없이 진행 (이미 PySwitch를 쓰고 있고 백업이 있어요)")) : null),
+    step(3, "설치", S.installDone ? "done" : "todo",
+      h("label", { class: "field" }, h("span", {}, "기기 모델"),
+        h("select", { id: "instDevice" }, ...Object.entries(DEVICES).map(([id, d]) => h("option", { value: id, selected: id === S.modes.device }, d.title)))),
+      h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instClean", checked: S.kind !== "multimode" }),
+        h("span", {}, "기존 파일을 지우고 설치 (권장. license 폴더는 남겨요)")),
+      h("p", { class: "hint" }, `펌웨어 ${S.manifest?.version || "?"} 파일 ${S.manifest?.files.length || 0}개와 모드 ${S.modes.modes.length}개(${S.modes.modes.join(", ")})를 써요.`),
+      h("button", { class: "primary", disabled: !canInstall || !S.manifest, onclick: runInstall }, "설치하기"),
+      !cpOk ? h("p", { class: "hint" }, "CircuitPython 7.x로 바꾼 뒤 설치할 수 있어요.") : (!canInstall ? h("p", { class: "hint" }, "백업을 마치면 설치할 수 있어요.") : null)),
+    step(4, "마무리", S.installDone ? "todo" : "later",
+      h("ol", {},
+        h("li", {}, "Finder에서 드라이브를 꺼내기(⏏) 하고, 완전히 사라질 때까지 기다리세요."),
+        h("li", {}, h("b", {}, "스위치를 누르지 않고"), " 장치를 다시 켜세요. 화면에 모드와 키 라벨이 나오면 성공이에요."),
+        h("li", {}, "설정을 바꿀 때는 다시 1번 스위치를 누른 채 켜고 이 페이지에서 연결하면 돼요."))),
+    h("section", { class: "restore" },
+      h("h3", {}, "되돌리기"),
+      h("p", { class: "hint" }, "백업 폴더를 고르면 장치 파일을 지우고 백업 내용으로 되돌려요."),
+      h("button", { class: "ghost", onclick: restoreBackup }, "백업에서 복원")));
 }
 
 /* ---------- Serial (Web Serial) ---------- */
@@ -393,7 +562,7 @@ function renderSide() {
   $("#connState").classList.toggle("on", !!S.dir);
   $("#btnSave").disabled = !S.dir;
   $("#btnSave").textContent = S.dirty && S.dir ? "장치에 저장 •" : "장치에 저장";
-  $("#btnFirmware").disabled = !S.dir || !S.manifest;
+  $("#btnFirmware").disabled = !S.dir || !S.manifest || S.kind !== "multimode";
 
   const info = [];
   if (S.boot) info.push(["OS", S.boot.replace("Adafruit CircuitPython ", "CircuitPython ")]);
@@ -658,7 +827,8 @@ function render() {
   $("#profName").value = p.name ?? S.mode;
   $("#profTag").textContent = p.tag ?? "";
   for (const b of $("#viewTabs").children) b.setAttribute("aria-selected", b.dataset.view === S.view);
-  for (const v of ["usage", "keys", "settings", "json"]) $("#view-" + v).hidden = v !== S.view;
+  for (const v of ["install", "usage", "keys", "settings", "json"]) $("#view-" + v).hidden = v !== S.view;
+  if (S.view === "install") renderInstall();
   if (S.view === "usage") renderUsage();
   if (S.view === "keys") { renderLayers(); renderFace(); renderEditor(); }
   if (S.view === "settings") renderSettings();
@@ -731,7 +901,7 @@ async function importProfile(file) {
 function bind() {
   $("#btnConnect").addEventListener("click", connect);
   $("#btnSave").addEventListener("click", save);
-  $("#btnFirmware").addEventListener("click", installFirmware);
+  $("#btnFirmware").addEventListener("click", () => installFirmware());
   $("#btnAddMode").addEventListener("click", addMode);
   $("#btnExport").addEventListener("click", exportProfile);
   $("#fileImport").addEventListener("change", e => { importProfile(e.target.files[0]); e.target.value = ""; });
@@ -756,7 +926,7 @@ function bind() {
 bind();
 // Deep link to a view: #usage, #keys, #settings, #json
 const hashView = location.hash.slice(1);
-if (["usage", "keys", "settings", "json"].includes(hashView)) S.view = hashView;
+if (["install", "usage", "keys", "settings", "json"].includes(hashView)) S.view = hashView;
 if (hashView === "keys") S.key = "3";
 
 loadDefaults()
