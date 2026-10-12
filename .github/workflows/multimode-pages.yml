@@ -1,5 +1,9 @@
 # Tests the multimode engine and profiles, builds the web editor including the firmware files,
 # and publishes it to GitHub Pages.
+#
+# Security: runs only for pushes to qc-local-mods (write access needed) and manual runs. The build job has a
+# read-only token which is not stored in the checkout; only the deploy job may write to Pages. Actions are
+# pinned to commit SHAs (the tag in the comment is the release they belong to).
 name: Multimode editor
 
 on:
@@ -7,10 +11,7 @@ on:
     branches: [qc-local-mods]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+permissions: {}
 
 concurrency:
   group: pages
@@ -19,12 +20,15 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
-          fetch-depth: 0     # for the version (git describe)
+          fetch-depth: 0     # for the version (commit count)
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
         with:
           python-version: "3.12"
 
@@ -47,16 +51,19 @@ jobs:
       - name: Build site
         run: python multimode/tools/mmtool.py site --out _site
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9   # v5.0.0
         with:
           path: _site
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346   # v5.0.1
