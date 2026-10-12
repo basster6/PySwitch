@@ -1,4 +1,5 @@
 from adafruit_midi import MIDI as _MIDI
+from adafruit_midi.midi_message import MIDIMessage as _MIDIMessage
 from adafruit_midi.midi_message import MIDIUnknownEvent as _MIDIUnknownEvent
 
 # USB MIDI Device
@@ -25,8 +26,14 @@ class AdafruitUsbMidiDevice:
     def send(self, midi_message):
         if isinstance(midi_message, _MIDIUnknownEvent):
             return
-        
-        self.__midi.send(midi_message)
+
+        # Keep source channel for parsed external MIDI messages.
+        # For app-local raw messages without a channel field, keep default out_channel.
+        channel = None
+        if isinstance(midi_message, _MIDIMessage) and hasattr(midi_message, "_channel"):
+            channel = midi_message._channel
+
+        self.__midi.send(midi_message, channel=channel)
 
     def receive(self):
         return self.__midi.receive()

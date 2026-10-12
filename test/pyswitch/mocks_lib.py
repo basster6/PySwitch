@@ -59,6 +59,27 @@ class MockAdafruitMIDIProgramChange:
             self.patch = patch
             self._STATUS = 0xC0
 
+# Message types which pyswitch.controller.midi imports only to register them with adafruit_midi
+class MockAdafruitMIDIChannelPressure:
+    class ChannelPressure:
+        _STATUS = 0xD0
+
+class MockAdafruitMIDINoteOff:
+    class NoteOff:
+        _STATUS = 0x80
+
+class MockAdafruitMIDINoteOn:
+    class NoteOn:
+        _STATUS = 0x90
+
+class MockAdafruitMIDIPitchBend:
+    class PitchBend:
+        _STATUS = 0xE0
+
+class MockAdafruitMIDIPolyphonicKeyPressure:
+    class PolyphonicKeyPressure:
+        _STATUS = 0xA0
+
 class MockAdafruitMIDISystemExclusive:    
     class SystemExclusive:
         def __init__(self, manufacturer_id = [0x00, 0x00, 0x00], data = []):

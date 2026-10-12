@@ -13,6 +13,11 @@ with patch.dict(sys.modules, {
     "adafruit_midi.system_exclusive": MockAdafruitMIDISystemExclusive(),
     "adafruit_midi.program_change": MockAdafruitMIDIProgramChange(),
     "adafruit_midi.midi_message": MockAdafruitMIDIMessage(),
+    "adafruit_midi.channel_pressure": MockAdafruitMIDIChannelPressure(),
+    "adafruit_midi.note_off": MockAdafruitMIDINoteOff(),
+    "adafruit_midi.note_on": MockAdafruitMIDINoteOn(),
+    "adafruit_midi.pitch_bend": MockAdafruitMIDIPitchBend(),
+    "adafruit_midi.polyphonic_key_pressure": MockAdafruitMIDIPolyphonicKeyPressure(),
     "gc": MockGC()
 }):
     from adafruit_midi.system_exclusive import SystemExclusive
@@ -164,6 +169,62 @@ class TestMidiController(unittest.TestCase):
 
         self.assertEqual(sub_midi_1.messages_sent, [])
         self.assertEqual(sub_midi_2.messages_sent, [])        
+
+
+    # A source routed to APPLICATION and to an external target is read once and delivered to both
+    def test_shared_source_routed_to_appl_and_external(self):
+        sub_midi_1 = MockMidiController()
+        sub_midi_2 = MockMidiController()
+
+        midi = MidiController(
+            routings = [
+                MidiRouting(
+                    source = sub_midi_1,
+                    target = MidiRouting.APPLICATION
+                ),
+                MidiRouting(
+                    source = sub_midi_1,
+                    target = sub_midi_2
+                )
+            ]
+        )
+
+        midi_message_1 = SystemExclusive(manufacturer_id = [0x00, 0x10, 0x20], data = [0x01])
+        midi_message_2 = SystemExclusive(manufacturer_id = [0x00, 0x10, 0x20], data = [0x02])
+
+        sub_midi_1.next_receive_messages = [midi_message_1, midi_message_2]
+
+        self.assertEqual(midi.receive(), midi_message_1)
+        self.assertEqual(midi.receive(), midi_message_2)
+        self.assertEqual(midi.receive(), None)
+
+        self.assertEqual(sub_midi_2.messages_sent, [midi_message_1, midi_message_2])
+
+    # Messages of several shared sources arriving in the same cycle must all reach APPLICATION
+    def test_shared_sources_no_message_lost(self):
+        sub_midi_1 = MockMidiController()
+        sub_midi_2 = MockMidiController()
+        sub_midi_out = MockMidiController()
+
+        midi = MidiController(
+            routings = [
+                MidiRouting(source = sub_midi_1, target = MidiRouting.APPLICATION),
+                MidiRouting(source = sub_midi_2, target = MidiRouting.APPLICATION),
+                MidiRouting(source = sub_midi_1, target = sub_midi_out),
+                MidiRouting(source = sub_midi_2, target = sub_midi_out)
+            ]
+        )
+
+        midi_message_1 = SystemExclusive(manufacturer_id = [0x00, 0x10, 0x20], data = [0x01])
+        midi_message_2 = SystemExclusive(manufacturer_id = [0x00, 0x10, 0x20], data = [0x02])
+
+        sub_midi_1.next_receive_messages = [midi_message_1]
+        sub_midi_2.next_receive_messages = [midi_message_2]
+
+        received = [midi.receive(), midi.receive(), midi.receive()]
+
+        self.assertEqual(received, [midi_message_1, midi_message_2, None])
+        self.assertEqual(sub_midi_out.messages_sent, [midi_message_1, midi_message_2])
 
 
 ###################################################################################################

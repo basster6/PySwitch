@@ -1,0 +1,736 @@
+{
+  "schema": 1,
+  "name": "Quad Cortex mini",
+  "tag": "QC",
+  "channel": 1,
+  "holdMs": 600,
+  "doubleMs": 700,
+  "power": true,
+  "state": {
+    "gig": 0,
+    "mp": 2,
+    "qp": 2,
+    "tun": 0,
+    "ms": 0,
+    "sc": -1,
+    "gs": 0,
+    "pw": "USB",
+    "pws": -1
+  },
+  "consts": {
+    "FS": [
+      [
+        35,
+        36,
+        37,
+        38
+      ],
+      [
+        39,
+        40,
+        41,
+        42
+      ]
+    ],
+    "MODES": [
+      "PRE",
+      "SCN",
+      "STP"
+    ],
+    "MCOOL": [
+      "BLUE",
+      "TURQUOISE",
+      "LIGHT_BLUE"
+    ],
+    "MWARM": [
+      "ORANGE",
+      "RED",
+      "PURPLE"
+    ],
+    "PCOOL": [
+      [
+        "BLUE",
+        "TURQUOISE",
+        "LIGHT_BLUE",
+        "DARK_BLUE"
+      ],
+      [
+        "LIGHT_BLUE",
+        "TURQUOISE",
+        "BLUE",
+        "DARK_BLUE"
+      ]
+    ],
+    "PWARM": [
+      [
+        "PINK",
+        "ORANGE",
+        "DARK_YELLOW",
+        "YELLOW"
+      ],
+      [
+        "LIGHT_RED",
+        "RED",
+        "PURPLE",
+        "ORANGE"
+      ]
+    ],
+    "SLOTS": "ABCD",
+    "PAGES": [
+      "I",
+      "II"
+    ]
+  },
+  "vars": [
+    [
+      "cur",
+      "qp if gs == 0 else 3 - qp"
+    ],
+    [
+      "opp",
+      "3 - cur"
+    ],
+    [
+      "pl",
+      "'BLUE' if gig else 'ORANGE'"
+    ],
+    [
+      "pr",
+      "'TURQUOISE' if gig else 'RED'"
+    ],
+    [
+      "sfx",
+      "'O' if gs else 'C'"
+    ],
+    [
+      "scn",
+      "'-' if sc < 0 else 'ABCD'[sc % 4]"
+    ],
+    [
+      "scp",
+      "'' if sc < 0 else ('I' if sc < 4 else 'II')"
+    ]
+  ],
+  "screen": {
+    "status": "QC  {'GIG VIEW' if gig else 'CHAIN'}{'  FLIP' if gig and gs else ''}{'' if gig else '  MP ' + PAGES[mp - 1]}",
+    "statusColor": "'DARK_BLUE' if gig else 'DARK_YELLOW'",
+    "power": "{('%d%%' % pwp) if pwp >= 0 else ('BAT' if pws == 1 else 'USB')}",
+    "tiles": [
+      {
+        "caption": "MODE",
+        "value": "{MODES[ms]}",
+        "color": "(MCOOL if gig else MWARM)[ms]"
+      },
+      {
+        "caption": "QC PAGE",
+        "value": "{PAGES[qp - 1]}",
+        "color": "pl if qp == 1 else pr"
+      },
+      {
+        "caption": "{'SCENE' if sc < 0 else 'SCENE ' + scp}",
+        "value": "{scn}",
+        "color": "'DARK_GREEN' if sc < 0 else 'GREEN'"
+      }
+    ],
+    "message": "",
+    "messageColor": "BLACK"
+  },
+  "layers": [
+    {
+      "name": "Tuner",
+      "when": "tun",
+      "desc": {
+        "en": "While the tuner is on: everything turns red. Hold 1 to turn it off.",
+        "zh": "调音器打开时：屏幕全部变为红色。长按 1 号键关闭。",
+        "ja": "チューナーがオンのとき：画面全体が赤くなります。1 を長押しでオフ。",
+        "ko": "튜너가 켜져 있을 때: 화면 전체가 빨간색이 돼요. 1을 길게 눌러 끄세요."
+      },
+      "screen": {
+        "status": "QC  TUNER",
+        "statusColor": "RED",
+        "message": "TUNER ON (HOLD 1)",
+        "messageColor": "RED",
+        "tiles": [
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          }
+        ]
+      },
+      "keys": {}
+    },
+    {
+      "name": "Gig View",
+      "when": "gig",
+      "keys": {
+        "1": {
+          "label": "A {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][0]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][0]"
+            },
+            {
+              "flash": "FS A  PAGE {PAGES[cur - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][0]"
+            },
+            {
+              "flash": "FS A  PAGE {PAGES[opp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch A on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 A，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ A、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 A, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch A on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 A，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ A、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 A, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
+        },
+        "2": {
+          "label": "B {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][1]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][1]"
+            },
+            {
+              "flash": "FS B  PAGE {PAGES[cur - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][1]"
+            },
+            {
+              "flash": "FS B  PAGE {PAGES[opp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch B on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 B，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ B、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 B, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch B on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 B，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ B、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 B, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
+        },
+        "A": {
+          "label": "C {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][2]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][2]"
+            },
+            {
+              "flash": "FS C  PAGE {PAGES[cur - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][2]"
+            },
+            {
+              "flash": "FS C  PAGE {PAGES[opp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch C on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 C，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ C、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 C, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch C on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 C，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ C、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 C, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
+        },
+        "B": {
+          "label": "D {PAGES[cur - 1]}",
+          "color": "PCOOL[cur - 1][3]",
+          "short": [
+            {
+              "cc": "FS[cur - 1][3]"
+            },
+            {
+              "flash": "FS D  PAGE {PAGES[cur - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "cc": "FS[opp - 1][3]"
+            },
+            {
+              "flash": "FS D  PAGE {PAGES[opp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch D on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 D，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ D、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 D, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch D on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 D，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ D、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 D, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
+          },
+          "hint": "PAGE {PAGES[opp - 1]}"
+        }
+      },
+      "desc": {
+        "en": "When the QC shows Gig View: 1, 2, A and B act as QC footswitches A, B, C and D.",
+        "zh": "QC 显示 Gig View 时：1、2、A、B 直接代替 QC 的脚踏开关 A、B、C、D。",
+        "ja": "QC が Gig View のとき：1・2・A・B が QC のフットスイッチ A・B・C・D の代わりになります。",
+        "ko": "QC 화면이 Gig View일 때. 1·2·A·B가 QC 풋스위치 A·B·C·D를 그대로 대신해요."
+      }
+    },
+    {
+      "name": "Chain",
+      "when": "not gig",
+      "keys": {
+        "1": {
+          "label": "A {PAGES[mp - 1]}",
+          "color": "PWARM[mp - 1][0]",
+          "led": "['RED', 'RED', PWARM[mp - 1][0]] if tun else PWARM[mp - 1][0]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][0]"
+            },
+            {
+              "flash": "FS A  PAGE {PAGES[mp - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 45,
+              "val": "127 if tun else 0"
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch A (internal page MP)",
+              "zh": "脚踏开关 A（按内部页 MP）",
+              "ja": "フットスイッチ A（内部ページ MP 基準）",
+              "ko": "풋스위치 A (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Tuner on/off (CC45)",
+              "zh": "打开/关闭调音器（CC45）",
+              "ja": "チューナーのオン/オフ（CC45）",
+              "ko": "튜너 켜기/끄기 (CC45)"
+            }
+          },
+          "hint": "TUNER"
+        },
+        "2": {
+          "label": "B {PAGES[mp - 1]}",
+          "color": "PWARM[mp - 1][1]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][1]"
+            },
+            {
+              "flash": "FS B  PAGE {PAGES[mp - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "set": "mp",
+              "to": "3 - mp"
+            },
+            {
+              "flash": "MIDI PAGE {PAGES[mp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch B (internal page MP)",
+              "zh": "脚踏开关 B（按内部页 MP）",
+              "ja": "フットスイッチ B（内部ページ MP 基準）",
+              "ko": "풋스위치 B (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Switch the internal page MP 1↔2. Sends nothing to the QC",
+              "zh": "切换内部页 MP 1↔2，不向 QC 发送任何消息",
+              "ja": "内部ページ MP を 1↔2 で切り替え。QC には何も送りません",
+              "ko": "내부 페이지 MP 1↔2 전환. QC에는 아무것도 보내지 않아요"
+            }
+          },
+          "hint": {
+            "*": "MP SWAP",
+            "mc10": "MP PG"
+          }
+        },
+        "A": {
+          "label": "C {PAGES[mp - 1]}",
+          "color": "PWARM[mp - 1][2]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][2]"
+            },
+            {
+              "flash": "FS C  PAGE {PAGES[mp - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "inc": "sc",
+              "by": -1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch C (internal page MP)",
+              "zh": "脚踏开关 C（按内部页 MP）",
+              "ja": "フットスイッチ C（内部ページ MP 基準）",
+              "ko": "풋스위치 C (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Scene −1 (CC43, wraps from A to H)",
+              "zh": "场景 −1（CC43，从 A 循环到 H）",
+              "ja": "シーン −1（CC43、A から H へ循環）",
+              "ko": "씬 −1 (CC43, A에서 H로 순환)"
+            }
+          },
+          "hint": {
+            "*": "SCENE -",
+            "mc10": "SCN -"
+          }
+        },
+        "B": {
+          "label": "D {PAGES[mp - 1]}",
+          "color": "PWARM[mp - 1][3]",
+          "short": [
+            {
+              "cc": "FS[mp - 1][3]"
+            },
+            {
+              "flash": "FS D  PAGE {PAGES[mp - 1]}"
+            }
+          ],
+          "long": [
+            {
+              "inc": "sc",
+              "by": 1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Footswitch D (internal page MP)",
+              "zh": "脚踏开关 D（按内部页 MP）",
+              "ja": "フットスイッチ D（内部ページ MP 基準）",
+              "ko": "풋스위치 D (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Scene +1 (CC43, wraps from H to A)",
+              "zh": "场景 +1（CC43，从 H 循环到 A）",
+              "ja": "シーン +1（CC43、H から A へ循環）",
+              "ko": "씬 +1 (CC43, H에서 A로 순환)"
+            }
+          },
+          "hint": {
+            "*": "SCENE +",
+            "mc10": "SCN +"
+          }
+        }
+      },
+      "desc": {
+        "en": "Normal mode: 1, 2, A and B send QC footswitches A to D on the internal page (MP).",
+        "zh": "普通模式：1、2、A、B 按内部页（MP）发送 QC 脚踏开关 A～D。",
+        "ja": "通常モード：1・2・A・B が内部ページ（MP）基準で QC のフットスイッチ A〜D を送ります。",
+        "ko": "평소 모드. 1·2·A·B가 내부 페이지(MP) 기준으로 QC 풋스위치 A~D를 보내요."
+      }
+    },
+    {
+      "name": "Global",
+      "keys": {
+        "3": {
+          "label": "{'DBL?' if _pend == '3' else MODES[ms]}",
+          "color": "(MCOOL if gig else MWARM)[ms]",
+          "led": "[pl, pl, 'DARK_GRAY'] if qp == 1 else ['DARK_GRAY', pr, pr]",
+          "bright": 0.25,
+          "short": [
+            {
+              "inc": "ms",
+              "mod": 3
+            },
+            {
+              "cc": 47,
+              "val": "ms"
+            },
+            {
+              "flash": "MODE {MODES[ms]}"
+            }
+          ],
+          "double": [
+            {
+              "toggle": "gs"
+            },
+            {
+              "flash": "{'FLIPPED' if gs else 'NORMAL'} PAGES"
+            }
+          ],
+          "long": [
+            {
+              "set": "qp",
+              "to": "3 - qp"
+            },
+            {
+              "cc": 64,
+              "val": "127 if qp == 2 else 0"
+            },
+            {
+              "flash": "QC PAGE {PAGES[qp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Cycle the QC mode PRE→SCN→STP (CC47). Runs after 0.7 s because it waits for a double click",
+              "zh": "循环切换 QC 模式 PRE→SCN→STP（CC47）。因等待双击，0.7 秒后执行",
+              "ja": "QC のモードを PRE→SCN→STP の順に切り替え（CC47）。ダブルクリックを待つため 0.7 秒後に実行",
+              "ko": "QC 모드 순환 PRE→SCN→STP (CC47). 더블클릭을 기다려서 0.7초 뒤 실행"
+            },
+            "double": {
+              "en": "In Gig View, swap which page short and long presses send (label ends in C↔O)",
+              "zh": "在 Gig View 中，互换短按和长按对应的当前页/另一页（标签末尾 C↔O）",
+              "ja": "Gig View で、短押しと長押しが送る現在/反対ページを入れ替え（ラベル末尾 C↔O）",
+              "ko": "Gig View에서 짧게/길게 누르기의 현재·반대 페이지를 서로 뒤집기 (라벨 끝 C↔O)"
+            },
+            "long": {
+              "en": "Switch the QC footswitch page I↔II (CC64). LED left = I, right = II",
+              "zh": "切换 QC 脚踏开关页 I↔II（CC64）。LED 左侧 = I，右侧 = II",
+              "ja": "QC のフットスイッチページを I↔II で切り替え（CC64）。LED 左 = I、右 = II",
+              "ko": "QC 풋스위치 페이지 I↔II 전환 (CC64). LED 왼쪽=I, 오른쪽=II"
+            }
+          },
+          "hint": {
+            "*": "PAGE SWAP",
+            "mc10": "PAGE"
+          }
+        },
+        "C": {
+          "label": "TAP",
+          "color": "'GREEN' if gig else 'TURQUOISE'",
+          "short": [
+            {
+              "cc": 44,
+              "val": 127
+            },
+            {
+              "flash": "TAP"
+            }
+          ],
+          "long": [
+            {
+              "toggle": "gig"
+            },
+            {
+              "cc": 46,
+              "val": "127 if gig else 0"
+            },
+            {
+              "flash": "GIG VIEW {'ON' if gig else 'OFF'}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Tap tempo (CC44)",
+              "zh": "Tap 速度（CC44）",
+              "ja": "タップテンポ（CC44）",
+              "ko": "탭 템포 (CC44)"
+            },
+            "long": {
+              "en": "Gig View on/off (CC46)",
+              "zh": "打开/关闭 Gig View（CC46）",
+              "ja": "Gig View のオン/オフ（CC46）",
+              "ko": "Gig View 켜기/끄기 (CC46)"
+            }
+          },
+          "hint": {
+            "*": "{'GIG OFF' if gig else 'GIG VIEW'}",
+            "mc10": "GIG"
+          }
+        },
+        "4": {
+          "label": "TUN",
+          "color": "'RED' if tun else 'DARK_PURPLE'",
+          "short": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 45,
+              "val": "127 if tun else 0"
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Tuner on/off (MIDI Captain 10)",
+              "zh": "打开/关闭调音器（MIDI Captain 10）",
+              "ja": "チューナーのオン/オフ（MIDI Captain 10）",
+              "ko": "튜너 켜기/끄기 (MIDI Captain 10)"
+            }
+          }
+        },
+        "D": {
+          "label": "MP {PAGES[mp - 1]}",
+          "color": "PWARM[mp - 1][0]",
+          "short": [
+            {
+              "set": "mp",
+              "to": "3 - mp"
+            },
+            {
+              "flash": "MIDI PAGE {PAGES[mp - 1]}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Internal page MP 1↔2 (MIDI Captain 10)",
+              "zh": "内部页 MP 1↔2（MIDI Captain 10）",
+              "ja": "内部ページ MP 1↔2（MIDI Captain 10）",
+              "ko": "내부 페이지 MP 1↔2 (MIDI Captain 10)"
+            }
+          }
+        },
+        "Up": {
+          "label": "SC+",
+          "color": "LIGHT_GREEN",
+          "short": [
+            {
+              "inc": "sc",
+              "by": 1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Scene +1 (MIDI Captain 10)",
+              "zh": "场景 +1（MIDI Captain 10）",
+              "ja": "シーン +1（MIDI Captain 10）",
+              "ko": "씬 +1 (MIDI Captain 10)"
+            }
+          }
+        },
+        "Down": {
+          "label": "SC-",
+          "color": "LIGHT_GREEN",
+          "short": [
+            {
+              "inc": "sc",
+              "by": -1,
+              "mod": 8
+            },
+            {
+              "cc": 43,
+              "val": "sc"
+            },
+            {
+              "set": "qp",
+              "to": "1 if sc < 4 else 2"
+            },
+            {
+              "flash": "SCENE {scn} ({scp})"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Scene −1 (MIDI Captain 10)",
+              "zh": "场景 −1（MIDI Captain 10）",
+              "ja": "シーン −1（MIDI Captain 10）",
+              "ko": "씬 −1 (MIDI Captain 10)"
+            }
+          }
+        }
+      },
+      "desc": {
+        "en": "Keys that do the same in every mode.",
+        "zh": "在所有模式下动作相同的键。",
+        "ja": "どのモードでも同じ動作をするキー。",
+        "ko": "모든 모드에서 같은 동작을 하는 키."
+      }
+    }
+  ],
+  "desc": {
+    "en": "Controls the Quad Cortex mini. Chain mode normally, hold C for Gig View mode.",
+    "zh": "控制 Quad Cortex mini。平时为 Chain 模式，长按 C 进入 Gig View 模式。",
+    "ja": "Quad Cortex mini を操作します。通常は Chain モード、C を長押しで Gig View モード。",
+    "ko": "Quad Cortex mini 제어. 평소엔 Chain 모드, C를 길게 누르면 Gig View 모드."
+  }
+}

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Captain Multimode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=PT+Sans+Narrow:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- Texts are filled in by i18n.js (data-i18n*). The English defaults are shown until the script runs. -->
+<header class="top">
+  <div class="brand">
+    <span class="led" aria-hidden="true"></span>
+    <h1 data-i18n="app.title">Captain Multimode</h1>
+    <span class="sub" data-i18n="app.sub">MIDI Captain mapping editor</span>
+  </div>
+  <div class="conn" id="conn">
+    <label class="lang"><span class="sr" data-i18n="app.language">Language</span>
+      <select id="lang" data-i18n-aria="app.language" aria-label="Language"></select>
+    </label>
+    <span class="pill" id="connState" data-i18n="conn.none">No device</span>
+    <button id="btnConnect" class="primary" data-i18n="conn.connect">Connect device drive</button>
+  </div>
+</header>
+
+<div class="notice preview" id="preview">
+  <span><b data-i18n="preview.title">Preview</b> · <span data-i18n="preview.text">You are editing the bundled example profiles in this browser.</span></span>
+  <button id="btnPreviewConnect" class="ghost small" data-i18n="conn.connect">Connect device drive</button>
+</div>
+<div class="notice" id="notice" hidden></div>
+
+<main class="layout">
+  <!-- Left: device + modes -->
+  <aside class="panel side">
+    <section>
+      <h2 data-i18n="side.device">Device</h2>
+      <label class="field"><span data-i18n="side.model">Model</span>
+        <select id="device"></select>
+      </label>
+    </section>
+
+    <section>
+      <div class="row-head"><h2 data-i18n="side.modes">Modes</h2><button id="btnAddMode" class="ghost small" data-i18n="side.addMode">+ Add</button></div>
+      <ol id="modeList" class="modes"></ol>
+      <p class="hint" data-i18n="side.modesHint">The default mode starts at power-on.</p>
+      <div id="bootSelect" class="boot"></div>
+    </section>
+
+    <section>
+      <h2 data-i18n="side.deviceSection">Device</h2>
+      <div class="stack">
+        <button id="btnSave" class="primary" disabled data-i18n="side.save">Save to device</button>
+        <p id="saveState" class="save-state" aria-live="polite"></p>
+        <button id="btnFirmware" disabled data-i18n="side.firmware">Install / update firmware</button>
+        <div class="split">
+          <button id="btnExport" class="ghost" data-i18n="side.export">Export JSON</button>
+          <label class="ghost button"><span data-i18n="side.import">Import JSON</span><input type="file" id="fileImport" accept=".json" hidden></label>
+        </div>
+      </div>
+      <dl class="info" id="devInfo"></dl>
+      <label class="field"><span data-i18n="bat.fullPin">Monitor voltage with a full battery (V)</span>
+        <input id="batFull" type="number" min="0.2" max="3.3" step="0.001" placeholder="0.912">
+      </label>
+      <p class="hint" data-i18n="bat.hint">Charge fully and enter the value the status bar shows.</p>
+      <details class="serial">
+        <summary data-i18n="serial.title">Serial (restart, bootloader)</summary>
+        <div class="stack">
+          <button id="btnRestart" class="ghost" data-i18n="serial.restart">Restart device</button>
+          <button id="btnUf2" class="ghost" data-i18n="serial.uf2">Restart into UF2 bootloader</button>
+          <label class="ghost button"><span data-i18n="serial.flash">Flash CircuitPython .uf2</span><input type="file" id="fileUf2" accept=".uf2" hidden></label>
+          <p class="hint" data-i18n="serial.hint">Chrome and Edge only.</p>
+        </div>
+      </details>
+    </section>
+  </aside>
+
+  <!-- Center: profile, layers, device face -->
+  <section class="panel center">
+    <div class="row-head">
+      <div class="title-edit">
+        <input id="profName" class="h-input" data-i18n-aria="prof.name" aria-label="Profile name">
+        <span class="tag" id="profTag"></span>
+      </div>
+      <div class="tabs" role="tablist" id="viewTabs">
+        <button role="tab" data-view="install" data-i18n="tab.install">Install</button>
+        <button role="tab" data-view="usage" aria-selected="true" data-i18n="tab.usage">Usage</button>
+        <button role="tab" data-view="keys" data-i18n="tab.keys">Key mapping</button>
+        <button role="tab" data-view="settings" data-i18n="tab.settings">Profile settings</button>
+        <button role="tab" data-view="json" data-i18n="tab.json">JSON</button>
+      </div>
+    </div>
+
+    <div id="view-install" class="install" hidden></div>
+
+    <div id="view-usage" class="usage"></div>
+
+    <div id="view-keys" hidden>
+      <div class="layers" id="layers"></div>
+      <div class="layer-meta" id="layerMeta"></div>
+      <div class="face" id="face"></div>
+      <p class="hint" data-i18n="face.hint">Click a switch to edit it.</p>
+    </div>
+
+    <div id="view-settings" hidden>
+      <div class="grid2">
+        <label class="field"><span data-i18n="set.tag">Display tag</span><input id="setTag"></label>
+        <label class="field"><span data-i18n="set.channel">MIDI channel (1-16)</span><input id="setChannel" type="number" min="1" max="16"></label>
+        <label class="field"><span data-i18n="set.hold">Long press (ms)</span><input id="setHold" type="number" min="100" step="50"></label>
+        <label class="field"><span data-i18n="set.double">Double click window (ms)</span><input id="setDouble" type="number" min="100" step="50"></label>
+        <label class="field check"><input id="setPower" type="checkbox"><span data-i18n="set.power">Show power / battery</span></label>
+      </div>
+      <label class="field"><span><code>state</code> · <span data-i18n="set.state">State variables (JSON)</span></span><textarea id="setState" rows="5" class="mono"></textarea></label>
+      <label class="field"><span><code>consts</code> · <span data-i18n="set.consts">Constants (JSON)</span></span><textarea id="setConsts" rows="6" class="mono"></textarea></label>
+      <label class="field"><span><code>vars</code> · <span data-i18n="set.vars">Derived variables</span></span><textarea id="setVars" rows="4" class="mono"></textarea></label>
+      <div class="grid2">
+        <label class="field"><span data-i18n="set.status">Status line</span><input id="setStatus" class="mono"></label>
+        <label class="field"><span data-i18n="set.statusColor">Status color</span><input id="setStatusColor" class="mono"></label>
+        <label class="field"><span data-i18n="set.powerText">Power (right of the status line)</span><input id="setPowerText" class="mono"></label>
+        <label class="field"><span data-i18n="set.message">Message line (when no action is shown)</span><input id="setMessage" class="mono"></label>
+        <label class="field"><span data-i18n="set.messageColor">Message color</span><input id="setMessageColor" class="mono"></label>
+      </div>
+      <label class="field"><span><code>tiles</code> · <span data-i18n="set.tiles">Information tiles</span></span><textarea id="setTiles" rows="6" class="mono"></textarea></label>
+      <p class="err" id="settingsErr" hidden></p>
+    </div>
+
+    <div id="view-json" hidden>
+      <textarea id="jsonText" class="mono json" spellcheck="false" data-i18n-aria="json.aria" aria-label="Profile JSON"></textarea>
+      <div class="split"><button id="btnApplyJson" data-i18n="json.apply">Apply JSON</button><span class="err" id="jsonErr"></span></div>
+    </div>
+  </section>
+
+  <!-- Right: key editor -->
+  <aside class="panel editor" id="editor"></aside>
+</main>
+
+<footer class="foot">
+  <p class="legal" data-i18n="app.footer">Based on PySwitch (GPLv3, Thomas Weber).</p>
+  <div class="meta">
+    <a href="https://github.com/basster6/PySwitch/tree/qc-local-mods/multimode" target="_blank" rel="noopener" data-i18n="app.source">Source on GitHub</a>
+    <code id="fwVersion"></code>
+  </div>
+</footer>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<template id="tplOp">
+  <div class="op">
+    <select class="op-type"></select>
+    <div class="op-fields"></div>
+    <div class="op-tools">
+      <button class="icon up">↑</button>
+      <button class="icon down">↓</button>
+      <button class="icon del">✕</button>
+    </div>
+  </div>
+</template>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

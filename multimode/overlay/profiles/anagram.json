@@ -1,0 +1,617 @@
+{
+  "schema": 1,
+  "name": "Anagram",
+  "tag": "ANA",
+  "channel": 1,
+  "holdMs": 600,
+  "doubleMs": 500,
+  "power": true,
+  "state": {
+    "lp": 0,
+    "am": 1,
+    "fa": 0,
+    "fb": 0,
+    "fc": 0,
+    "tun": 0,
+    "pw": "USB",
+    "pws": -1
+  },
+  "consts": {
+    "AM": [
+      "PRE",
+      "STM",
+      "SCN"
+    ],
+    "AMC": [
+      "ORANGE",
+      "GREEN",
+      "TURQUOISE"
+    ]
+  },
+  "vars": [],
+  "screen": {
+    "status": "ANA  {'LOOPER' if lp else 'PLAY'}",
+    "statusColor": "'DARK_PURPLE' if lp else 'DARK_GREEN'",
+    "power": "{('%d%%' % pwp) if pwp >= 0 else ('BAT' if pws == 1 else 'USB')}",
+    "tiles": [
+      {
+        "caption": "MODE",
+        "value": "{AM[am - 1]}",
+        "color": "AMC[am - 1]"
+      },
+      {
+        "caption": "FOOT",
+        "value": "{('A' if fa else '-') + ('B' if fb else '-') + ('C' if fc else '-')}",
+        "color": "'GREEN' if fa or fb or fc else 'DARK_GREEN'"
+      },
+      {
+        "caption": "LOOPER",
+        "value": "{'ON' if lp else 'OFF'}",
+        "color": "'PURPLE' if lp else 'DARK_GRAY'"
+      }
+    ],
+    "message": "",
+    "messageColor": "BLACK"
+  },
+  "layers": [
+    {
+      "name": "Tuner",
+      "when": "tun",
+      "desc": {
+        "en": "While the tuner is on: everything turns red. Hold 3 to close it.",
+        "zh": "调音器打开时：屏幕全部变为红色。长按 3 号键关闭。",
+        "ja": "チューナーがオンのとき：画面全体が赤くなります。3 を長押しで閉じます。",
+        "ko": "튜너가 켜져 있을 때: 화면 전체가 빨간색이 돼요. 3을 길게 눌러 닫으세요."
+      },
+      "screen": {
+        "status": "ANA  TUNER",
+        "statusColor": "RED",
+        "message": "TUNER ON (HOLD 3)",
+        "messageColor": "RED",
+        "tiles": [
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          },
+          {
+            "color": "RED"
+          }
+        ]
+      },
+      "keys": {}
+    },
+    {
+      "name": "Looper",
+      "when": "lp",
+      "keys": {
+        "1": {
+          "label": "REC",
+          "color": "RED",
+          "short": [
+            {
+              "cc": 112
+            },
+            {
+              "flash": "REC/DUB"
+            }
+          ],
+          "long": [
+            {
+              "cc": 113
+            },
+            {
+              "flash": "CLEAR"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Record / overdub (CC112)",
+              "zh": "录音/叠录（CC112）",
+              "ja": "録音/オーバーダブ（CC112）",
+              "ko": "녹음/오버더빙 (CC112)"
+            },
+            "long": {
+              "en": "Clear the current slot (CC113)",
+              "zh": "清除当前槽位（CC113）",
+              "ja": "現在のスロットを消去（CC113）",
+              "ko": "현재 슬롯 지우기 (CC113)"
+            }
+          },
+          "hint": "CLEAR"
+        },
+        "2": {
+          "label": "PLAY",
+          "color": "GREEN",
+          "short": [
+            {
+              "cc": 111
+            },
+            {
+              "flash": "PLAY/STOP"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Play / stop (CC111)",
+              "zh": "播放/停止（CC111）",
+              "ja": "再生/停止（CC111）",
+              "ko": "재생/정지 (CC111)"
+            }
+          }
+        },
+        "3": {
+          "label": "UNDO",
+          "color": "ORANGE",
+          "short": [
+            {
+              "cc": 114
+            },
+            {
+              "flash": "UNDO"
+            }
+          ],
+          "long": [
+            {
+              "cc": 115
+            },
+            {
+              "flash": "REDO"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Undo (CC114)",
+              "zh": "撤销（CC114）",
+              "ja": "元に戻す（CC114）",
+              "ko": "실행 취소 (Undo, CC114)"
+            },
+            "long": {
+              "en": "Redo (CC115)",
+              "zh": "重做（CC115）",
+              "ja": "やり直し（CC115）",
+              "ko": "다시 실행 (Redo, CC115)"
+            }
+          },
+          "hint": "REDO"
+        },
+        "A": {
+          "label": "SL-",
+          "color": "LIGHT_BLUE",
+          "short": [
+            {
+              "cc": 118
+            },
+            {
+              "flash": "SLOT -"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Previous looper slot (CC118)",
+              "zh": "上一个 Looper 槽位（CC118）",
+              "ja": "前のルーパースロット（CC118）",
+              "ko": "이전 루퍼 슬롯 (CC118)"
+            }
+          }
+        },
+        "B": {
+          "label": "SL+",
+          "color": "LIGHT_BLUE",
+          "short": [
+            {
+              "cc": 117
+            },
+            {
+              "flash": "SLOT +"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Next looper slot (CC117)",
+              "zh": "下一个 Looper 槽位（CC117）",
+              "ja": "次のルーパースロット（CC117）",
+              "ko": "다음 루퍼 슬롯 (CC117)"
+            }
+          }
+        },
+        "C": {
+          "label": "EXIT",
+          "color": "PURPLE",
+          "short": [
+            {
+              "set": "lp",
+              "to": 0
+            },
+            {
+              "cc": 110
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Leave the looper (CC110)",
+              "zh": "退出 Looper（CC110）",
+              "ja": "ルーパーを閉じる（CC110）",
+              "ko": "루퍼 나가기 (CC110)"
+            }
+          }
+        }
+      },
+      "desc": {
+        "en": "While the looper screen is open. Leave it with C.",
+        "zh": "Looper 画面打开时。按 C 退出。",
+        "ja": "ルーパー画面のとき。C で抜けます。",
+        "ko": "루퍼 화면일 때. C로 빠져나와요."
+      }
+    },
+    {
+      "name": "Play",
+      "when": "not lp",
+      "keys": {
+        "1": {
+          "label": "FA{'+' if fa else '-'}",
+          "color": "'GREEN' if fa else 'DARK_GREEN'",
+          "short": [
+            {
+              "toggle": "fa"
+            },
+            {
+              "cc": 17,
+              "val": "127 if fa else 0"
+            },
+            {
+              "flash": "FOOT A {'ON' if fa else 'OFF'}"
+            }
+          ],
+          "long": [
+            {
+              "cc": 106
+            },
+            {
+              "flash": "PRESET -"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Foot A binding on/off (CC17)",
+              "zh": "脚踏 A 绑定开/关（CC17）",
+              "ja": "フット A バインディングのオン/オフ（CC17）",
+              "ko": "Foot A 바인딩 켜기/끄기 (CC17)"
+            },
+            "long": {
+              "en": "Previous preset (CC106)",
+              "zh": "上一个预设（CC106）",
+              "ja": "前のプリセット（CC106）",
+              "ko": "이전 프리셋 (CC106)"
+            }
+          },
+          "hint": {
+            "*": "PRESET -",
+            "mc10": "PRE -"
+          }
+        },
+        "2": {
+          "label": "FB{'+' if fb else '-'}",
+          "color": "'GREEN' if fb else 'DARK_GREEN'",
+          "short": [
+            {
+              "toggle": "fb"
+            },
+            {
+              "cc": 18,
+              "val": "127 if fb else 0"
+            },
+            {
+              "flash": "FOOT B {'ON' if fb else 'OFF'}"
+            }
+          ],
+          "long": [
+            {
+              "cc": 105
+            },
+            {
+              "flash": "PRESET +"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Foot B binding on/off (CC18)",
+              "zh": "脚踏 B 绑定开/关（CC18）",
+              "ja": "フット B バインディングのオン/オフ（CC18）",
+              "ko": "Foot B 바인딩 켜기/끄기 (CC18)"
+            },
+            "long": {
+              "en": "Next preset (CC105)",
+              "zh": "下一个预设（CC105）",
+              "ja": "次のプリセット（CC105）",
+              "ko": "다음 프리셋 (CC105)"
+            }
+          },
+          "hint": {
+            "*": "PRESET +",
+            "mc10": "PRE +"
+          }
+        },
+        "3": {
+          "label": "FC{'+' if fc else '-'}",
+          "color": "'GREEN' if fc else 'DARK_GREEN'",
+          "short": [
+            {
+              "toggle": "fc"
+            },
+            {
+              "cc": 19,
+              "val": "127 if fc else 0"
+            },
+            {
+              "flash": "FOOT C {'ON' if fc else 'OFF'}"
+            }
+          ],
+          "long": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 86
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Foot C binding on/off (CC19)",
+              "zh": "脚踏 C 绑定开/关（CC19）",
+              "ja": "フット C バインディングのオン/オフ（CC19）",
+              "ko": "Foot C 바인딩 켜기/끄기 (CC19)"
+            },
+            "long": {
+              "en": "Tuner on/off (CC86)",
+              "zh": "打开/关闭调音器（CC86）",
+              "ja": "チューナーの表示/非表示（CC86）",
+              "ko": "튜너 열기/닫기 (CC86)"
+            }
+          },
+          "hint": "TUNER"
+        },
+        "A": {
+          "label": "SC-",
+          "color": "TURQUOISE",
+          "short": [
+            {
+              "cc": 109
+            },
+            {
+              "flash": "SCENE -"
+            }
+          ],
+          "long": [
+            {
+              "cc": 104
+            },
+            {
+              "flash": "BANK -"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Previous scene (CC109)",
+              "zh": "上一个场景（CC109）",
+              "ja": "前のシーン（CC109）",
+              "ko": "이전 씬 (CC109)"
+            },
+            "long": {
+              "en": "Previous bank (CC104)",
+              "zh": "上一个库（CC104）",
+              "ja": "前のバンク（CC104）",
+              "ko": "이전 뱅크 (CC104)"
+            }
+          },
+          "hint": "BANK -"
+        },
+        "B": {
+          "label": "SC+",
+          "color": "TURQUOISE",
+          "short": [
+            {
+              "cc": 108
+            },
+            {
+              "flash": "SCENE +"
+            }
+          ],
+          "long": [
+            {
+              "cc": 103
+            },
+            {
+              "flash": "BANK +"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Next scene (CC108)",
+              "zh": "下一个场景（CC108）",
+              "ja": "次のシーン（CC108）",
+              "ko": "다음 씬 (CC108)"
+            },
+            "long": {
+              "en": "Next bank (CC103)",
+              "zh": "下一个库（CC103）",
+              "ja": "次のバンク（CC103）",
+              "ko": "다음 뱅크 (CC103)"
+            }
+          },
+          "hint": "BANK +"
+        },
+        "C": {
+          "label": "{'DBL?' if _pend == 'C' else AM[am - 1]}",
+          "color": "AMC[am - 1]",
+          "short": [
+            {
+              "inc": "am",
+              "by": 1,
+              "mod": 3,
+              "lo": 1
+            },
+            {
+              "cc": 85,
+              "val": "am"
+            },
+            {
+              "flash": "MODE {AM[am - 1]}"
+            }
+          ],
+          "double": [
+            {
+              "mode": "next"
+            }
+          ],
+          "long": [
+            {
+              "set": "lp",
+              "to": 1
+            },
+            {
+              "cc": 110
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Cycle the Anagram mode Preset→Stomp→Scene (CC85). Runs after 0.5 s because it waits for a double click",
+              "zh": "循环切换 Anagram 模式 Preset→Stomp→Scene（CC85）。因等待双击，0.5 秒后执行",
+              "ja": "Anagram のモードを Preset→Stomp→Scene の順に切り替え（CC85）。ダブルクリックを待つため 0.5 秒後に実行",
+              "ko": "Anagram 모드 순환 Preset→Stomp→Scene (CC85). 더블클릭을 기다려서 0.5초 뒤 실행"
+            },
+            "double": {
+              "en": "Switch to the next controller mode (QC) and restart",
+              "zh": "切换到下一个控制器模式（QC）并重启",
+              "ja": "次のコントローラーモード（QC）に切り替えて再起動",
+              "ko": "다음 컨트롤러 모드(QC)로 전환하고 재시작"
+            },
+            "long": {
+              "en": "Open the looper screen (CC110)",
+              "zh": "打开 Looper 画面（CC110）",
+              "ja": "ルーパー画面を開く（CC110）",
+              "ko": "루퍼 화면 열기 (CC110)"
+            }
+          },
+          "hint": {
+            "*": "LOOPER",
+            "mc10": "LOOP"
+          }
+        }
+      },
+      "desc": {
+        "en": "Normal mode: the top three keys are the Stomp foot bindings, the bottom row scenes and banks.",
+        "zh": "普通模式：上排三个键为 Stomp 脚踏绑定，下排为场景和库。",
+        "ja": "通常モード：上の 3 つは Stomp のフットバインディング、下の段はシーンとバンク。",
+        "ko": "평소 모드. 위쪽 3개는 Stomp 풋 바인딩, 아래는 씬/뱅크."
+      }
+    },
+    {
+      "name": "MIDI Captain 10 extras",
+      "keys": {
+        "4": {
+          "label": "TUN",
+          "color": "'RED' if tun else 'DARK_PURPLE'",
+          "short": [
+            {
+              "toggle": "tun"
+            },
+            {
+              "cc": 86
+            },
+            {
+              "flash": "TUNER {'ON' if tun else 'OFF'}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Tuner on/off",
+              "zh": "打开/关闭调音器",
+              "ja": "チューナーの表示/非表示",
+              "ko": "튜너 열기/닫기"
+            }
+          }
+        },
+        "D": {
+          "label": "LOOP",
+          "color": "PURPLE",
+          "short": [
+            {
+              "toggle": "lp"
+            },
+            {
+              "cc": 110
+            },
+            {
+              "flash": "LOOPER {'ON' if lp else 'OFF'}"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Looper on/off",
+              "zh": "打开/关闭 Looper",
+              "ja": "ルーパーの表示/非表示",
+              "ko": "루퍼 열기/닫기"
+            }
+          }
+        },
+        "Up": {
+          "label": "PR+",
+          "color": "ORANGE",
+          "short": [
+            {
+              "cc": 105
+            },
+            {
+              "flash": "PRESET +"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Next preset",
+              "zh": "下一个预设",
+              "ja": "次のプリセット",
+              "ko": "다음 프리셋"
+            }
+          }
+        },
+        "Down": {
+          "label": "PR-",
+          "color": "ORANGE",
+          "short": [
+            {
+              "cc": 106
+            },
+            {
+              "flash": "PRESET -"
+            }
+          ],
+          "desc": {
+            "short": {
+              "en": "Previous preset",
+              "zh": "上一个预设",
+              "ja": "前のプリセット",
+              "ko": "이전 프리셋"
+            }
+          }
+        }
+      },
+      "desc": {
+        "en": "Keys only the MIDI Captain 10 has.",
+        "zh": "仅 MIDI Captain 10 具有的键。",
+        "ja": "MIDI Captain 10 だけにあるキー。",
+        "ko": "MIDI Captain 10에만 있는 키."
+      }
+    }
+  ],
+  "desc": {
+    "en": "Controls the Anagram bass multi-effects. Play layer normally, hold C for the looper.",
+    "zh": "控制 Anagram 贝斯综合效果器。平时为 Play 层，长按 C 进入 Looper。",
+    "ja": "Anagram ベース用マルチエフェクターを操作します。通常は Play レイヤー、C の長押しでルーパー。",
+    "ko": "Anagram 베이스 멀티이펙터 제어. 평소엔 Play 레이어, C를 길게 누르면 루퍼."
+  }
+}

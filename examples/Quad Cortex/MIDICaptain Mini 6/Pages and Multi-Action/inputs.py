@@ -439,6 +439,9 @@ class _PowerSenseAction(Action):
         self._pin_vbus = None
         self._vm = None
         self._last_text = None
+        self._last_code = -1
+        self._last_v_est = None
+        self._last_v_sys_est = None
         self._poll_interval_ms = 5000
         self._next_poll_ms = 0
 
@@ -495,22 +498,38 @@ class _PowerSenseAction(Action):
             source = "USB/DC"
             code = 0
 
+        v_est = None
+        v_sys_est = None
         if self._vm:
             raw = self._vm.value
             v_est = (raw * 3.3) / 65535.0
             v_sys_est = v_est * 3.0
-            text = f"{source} > {v_est:.2f}V > {v_sys_est:.2f}V"
+            text = f"{source} > {v_est:.1f}V > {v_sys_est:.1f}V"
         else:
             text = f"{source} > ?V > ?V"
 
-        if text == self._last_text:
+        # Ignore tiny voltage jitter to avoid periodic full redraw side effects.
+        value_changed = False
+        if self._vm:
+            if self._last_v_est is None or self._last_v_sys_est is None:
+                value_changed = True
+            else:
+                if abs(v_est - self._last_v_est) >= 0.1:
+                    value_changed = True
+                elif abs(v_sys_est - self._last_v_sys_est) >= 0.3:
+                    value_changed = True
+
+        source_changed = code != self._last_code
+        if not source_changed and not value_changed and text == self._last_text:
             return
 
         self._last_text = text
+        self._last_code = code
+        self._last_v_est = v_est
+        self._last_v_sys_est = v_sys_est
         _STATE["power_code"] = code
         _STATE["power"] = text
         _update_status_label()
-        _refresh_ui(self.appl, reset=True)
 
 
 class _SceneStepAction(Action):

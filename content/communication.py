@@ -21,9 +21,11 @@ Communication = {
     # Optional: Protocol to use. If not specified, the standard Client protocol is used which requests all
     # parameters in each update cycle. Use this to implement bidirectional communication.
     "protocol": KemperBidirectionalProtocol(
-        time_lease_seconds = 30               # When the controller is removed, the Profiler will stay in bidirectional
+        time_lease_seconds = 30,              # When the controller is removed, the Profiler will stay in bidirectional
                                               # mode for this amount of seconds. The communication is re-initiated every  
                                               # half of this value. 
+        tuner_mode = True                     # If set to True, Tuner information is only sent by the Kemper when in tuner 
+                                              # mode. Set to False to make it send the info all the time.
     ),
 
     # MIDI setup. This defines all MIDI routings. You at least have to define routings from and to 

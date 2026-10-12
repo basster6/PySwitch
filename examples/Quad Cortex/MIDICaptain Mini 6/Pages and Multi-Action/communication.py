@@ -8,16 +8,24 @@ _OUT_CH = 0
 _DIN_MIDI = PA_MIDICAPTAIN_DIN_MIDI(
     in_channel=None,
     out_channel=_OUT_CH,
+    in_buf_size=512,
 )
 
 _USB_MIDI = PA_MIDICAPTAIN_USB_MIDI(
     in_channel=None,
     out_channel=_OUT_CH,
+    in_buf_size=512,
 )
 
 Communication = {
     "midi": {
         "routings": [
+            # DIN -> DIN Thru (pass incoming DIN messages straight to DIN out)
+            MidiRouting(
+                source=_DIN_MIDI,
+                target=_DIN_MIDI,
+            ),
+
             # App <- USB
             MidiRouting(
                 source=_USB_MIDI,
@@ -30,11 +38,13 @@ Communication = {
                 target=_USB_MIDI,
             ),
 
-            # App <- DIN
-            MidiRouting(
-                source=_DIN_MIDI,
-                target=MidiRouting.APPLICATION,
-            ),
+            # NOTE:
+            # Keep DIN input out of APPLICATION path for low-latency THRU.
+            # If you really need app-side DIN parsing, re-enable the route below.
+            # MidiRouting(
+            #     source=_DIN_MIDI,
+            #     target=MidiRouting.APPLICATION,
+            # ),
 
             # App -> DIN
             MidiRouting(
