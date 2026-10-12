@@ -21,6 +21,7 @@ import filecmp
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -128,13 +129,23 @@ def build(out, device = None):
     return out
 
 
+# Version of the build: <PySwitch version>+mm<commit count>.<hash>[.local]. The commit count increases with every
+# commit, so versions can be compared. ".local" marks builds containing uncommitted changes.
 def version():
+    with open(os.path.join(CONTENT, "lib", "pyswitch", "misc.py")) as f:
+        m = re.search(r'PYSWITCH_VERSION\s*=\s*"([^"]+)"', f.read())
+    base = m.group(1) if m else "0"
+
+    def git(*cmd):
+        return subprocess.check_output(["git", "-C", REPO] + list(cmd), stderr = subprocess.DEVNULL).decode().strip()
+
     try:
-        out = subprocess.check_output(["git", "-C", REPO, "describe", "--always", "--dirty", "--tags"], stderr = subprocess.DEVNULL)
-        rev = out.decode().strip()
+        count = git("rev-list", "--count", "HEAD")
+        rev = git("rev-parse", "--short=7", "HEAD")
+        dirty = git("status", "--porcelain", "--untracked-files=no", "--", "content", "multimode/overlay") != ""
     except (OSError, subprocess.CalledProcessError):
-        rev = "unknown"
-    return time.strftime("%Y.%m.%d") + "-" + rev
+        return base + "+mm0.unknown"
+    return "%s+mm%s.%s%s" % (base, count, rev, ".local" if dirty else "")
 
 
 # Builds the web app: the editor (multimode/web), the default profiles, and the firmware files with a manifest

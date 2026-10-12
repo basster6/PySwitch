@@ -248,6 +248,7 @@ async function connect() {
   S.dirty = false;
   S.lastSaved = null;
   render();
+  checkFirmware();
 }
 
 function validate() {
@@ -318,16 +319,35 @@ async function installFirmware(fromWizard = false) {
       await writeFile(S.dir, f.path, new Uint8Array(await r.arrayBuffer()));
       written++;
     }
-    if (fromWizard) return;
+    if (fromWizard) { S.fwDiff = 0; return; }
     const hasProfiles = await readText(S.dir, "profiles/modes.json");
     if (!hasProfiles) await writeProfiles(S.dir);
     S.installed = S.manifest.version;
+    S.fwDiff = 0;
     notice(t("fw.done", { v: S.manifest.version, n: written }), "ok");
   } catch (e) {
     if (fromWizard) throw e;
     notice(t("fw.failed", { e: e.message }), "error");
   }
   if (!fromWizard) render();
+}
+
+// Compares the firmware files on the device with the manifest of the latest build (the version file is
+// ignored: it only names the build). Sets S.fwDiff to the number of differing files.
+async function checkFirmware() {
+  S.fwDiff = null;
+  if (!S.dir || !S.manifest || S.kind !== "multimode") return;
+  S.fwChecking = true;
+  renderSide();
+  let diff = 0;
+  for (const f of S.manifest.files) {
+    if (f.path === "lib/multimode/VERSION") continue;
+    const cur = await readBytes(S.dir, f.path);
+    if (!cur || cur.length !== f.size || await sha256(cur) !== f.sha256) diff++;
+  }
+  S.fwDiff = diff;
+  S.fwChecking = false;
+  renderSide();
 }
 
 /* ---------- Install wizard ---------- */
@@ -641,12 +661,16 @@ function renderSide() {
   $("#connState").classList.toggle("on", !!S.dir);
   renderSaveState();
   $("#fwVersion").textContent = S.manifest ? t("app.firmware", { v: S.manifest.version }) : "";
-  $("#btnFirmware").disabled = !S.dir || !S.manifest || S.kind !== "multimode";
+  $("#btnFirmware").disabled = !S.dir || !S.manifest || S.kind !== "multimode" || S.fwChecking;
+  $("#btnFirmware").classList.toggle("primary", S.fwDiff > 0);
 
   const info = [];
   if (S.boot) info.push([t("side.os"), S.boot.replace("Adafruit CircuitPython ", "CircuitPython ")]);
   if (S.dir) info.push([t("side.installed"), S.installed || t("side.none")]);
   if (S.manifest) info.push([t("side.latest"), S.manifest.version]);
+  if (S.dir && S.kind === "multimode" && S.manifest) {
+    info.push([t("fw.state"), S.fwChecking ? t("fw.checkingShort") : S.fwDiff == null ? "?" : S.fwDiff === 0 ? t("fw.upToDate") : t("fw.outdated", { n: S.fwDiff })]);
+  }
   $("#devInfo").replaceChildren(...info.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]));
 }
 

@@ -1,7 +1,8 @@
 ##############################################################################################################################################
 #
 # Power source / voltage monitor for MIDI Captain devices. Enable with "power": true in a profile.
-# Sets the state variables "pw" (display text like "BAT > 1.0V > 3.0V") and "pws" (0 = USB/DC, 1 = battery, 2 = DC).
+# Sets the state variables "pw" (display text like "BAT > 1.0V > 3.0V", voltages only if measurable) and "pws"
+# (0 = USB/DC, 1 = battery, 2 = DC).
 #
 ##############################################################################################################################################
 
@@ -9,6 +10,7 @@ from time import monotonic
 from pyswitch.misc import Updateable
 
 _POLL_INTERVAL_MS = 5000
+_MIN_VOLTAGE = 0.2
 
 
 class PowerSense(Updateable):
@@ -58,11 +60,14 @@ class PowerSense(Updateable):
         else:
             source, code = "USB/DC", 0
 
+        text = source
         if self._vm:
+            # VOLTAGE_MONITOR (GP29) reads ~0V on MIDI Captains powered by USB (measured on a Mini 6:
+            # 0.016V), so only show it when something is connected. The factor 3 is the divider of the
+            # Raspberry Pi Pico and has not been verified for the MIDI Captain.
             v = (self._vm.value * 3.3) / 65535.0
-            text = source + " > " + ("%.1f" % v) + "V > " + ("%.1f" % (v * 3)) + "V"
-        else:
-            text = source
+            if v >= _MIN_VOLTAGE:
+                text = source + " > " + ("%.1f" % v) + "V > " + ("%.1f" % (v * 3)) + "V"
 
         if text == self._last:
             return
