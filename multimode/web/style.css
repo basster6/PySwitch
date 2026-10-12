@@ -19,6 +19,8 @@
 
   --f-display: "Saira Condensed", "Arial Narrow", sans-serif;
   --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-body-zh: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --f-body-ja: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, "Noto Sans CJK JP", system-ui, sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
   --r: 6px;
@@ -47,6 +49,11 @@ body {
   font: 14px/1.5 var(--f-body);
   padding: 0 var(--s4) var(--s4);
 }
+/* Chinese and Japanese text use system CJK fonts (IBM Plex Sans KR has Korean and Latin only) */
+:root:lang(zh-Hans) body { font-family: var(--f-body-zh); }
+:root:lang(ja) body { font-family: var(--f-body-ja); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lang select { width: auto; min-height: 34px; padding: 4px 8px; }
 h1, h2 { margin: 0; text-wrap: balance; }
 h2 { font: 600 11px/1.2 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 code, .mono { font-family: var(--f-mono); font-size: 12.5px; font-variant-ligatures: none; }
@@ -141,7 +148,7 @@ textarea.json { min-height: 60vh; white-space: pre; }
 .serial summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 .serial .stack { margin-top: var(--s2); }
 
-.title-edit { display: flex; align-items: center; gap: var(--s2); min-width: 0; flex: 1 1 200px; }
+.title-edit { display: flex; align-items: center; gap: var(--s2); min-width: min(100%, 260px); flex: 1 1 260px; }
 .h-input { font: 700 22px/1.1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; border-color: transparent; background: transparent; padding-left: 0; }
 .h-input:hover, .h-input:focus { border-color: var(--line); padding-left: 8px; }
 .tag { font: 600 12px var(--f-mono); background: var(--lcd); color: var(--lcd-fg); padding: 2px 8px; border-radius: 4px; }
@@ -189,6 +196,22 @@ textarea.json { min-height: 60vh; white-space: pre; }
 .sw .trig span { font: 600 10px/1 var(--f-mono); padding: 2px 4px; border-radius: 3px; background: var(--lcd); color: var(--lcd-fg); }
 .sw.inherit { opacity: .55; }
 .sw.sel .cap { outline: 3px solid var(--accent); outline-offset: 6px; }
+
+/* Save state and toast */
+button.primary.dirty { box-shadow: 0 0 0 3px var(--accent-soft); }
+.save-state { margin: 0; font-size: 12px; color: var(--ok); min-height: 1.2em; }
+.save-state.dirty { color: var(--accent); font-weight: 600; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(560px, calc(100% - 32px));
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2); align-items: start;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--ok);
+  border-radius: 10px; padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .28); z-index: 10;
+}
+.toast.error { border-left-color: var(--danger); }
+.toast button.icon { min-height: 24px; width: 24px; }
 
 /* Usage */
 .usage { display: flex; flex-direction: column; gap: var(--s5); margin-top: var(--s4); }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,15 +10,19 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<!-- Texts are filled in by i18n.js (data-i18n*). The English defaults are shown until the script runs. -->
 <header class="top">
   <div class="brand">
     <span class="led" aria-hidden="true"></span>
-    <h1>Captain Multimode</h1>
-    <span class="sub">MIDI Captain 매핑 에디터</span>
+    <h1 data-i18n="app.title">Captain Multimode</h1>
+    <span class="sub" data-i18n="app.sub">MIDI Captain mapping editor</span>
   </div>
   <div class="conn" id="conn">
-    <span class="pill" id="connState">장치 미연결</span>
-    <button id="btnConnect" class="primary">장치 드라이브 연결</button>
+    <label class="lang"><span class="sr" data-i18n="app.language">Language</span>
+      <select id="lang" data-i18n-aria="app.language" aria-label="Language"></select>
+    </label>
+    <span class="pill" id="connState" data-i18n="conn.none">No device</span>
+    <button id="btnConnect" class="primary" data-i18n="conn.connect">Connect device drive</button>
   </div>
 </header>
 
@@ -28,37 +32,38 @@
   <!-- Left: device + modes -->
   <aside class="panel side">
     <section>
-      <h2>기기</h2>
-      <label class="field"><span>모델</span>
+      <h2 data-i18n="side.device">Device</h2>
+      <label class="field"><span data-i18n="side.model">Model</span>
         <select id="device"></select>
       </label>
     </section>
 
     <section>
-      <div class="row-head"><h2>모드</h2><button id="btnAddMode" class="ghost small">+ 추가</button></div>
+      <div class="row-head"><h2 data-i18n="side.modes">Modes</h2><button id="btnAddMode" class="ghost small" data-i18n="side.addMode">+ Add</button></div>
       <ol id="modeList" class="modes"></ol>
-      <p class="hint">기본 모드는 부팅할 때 처음 켜지는 모드예요. 부팅 키를 누른 채 전원을 켜면 해당 모드로 바뀝니다.</p>
+      <p class="hint" data-i18n="side.modesHint">The default mode starts at power-on.</p>
       <div id="bootSelect" class="boot"></div>
     </section>
 
     <section>
-      <h2>장치</h2>
+      <h2 data-i18n="side.deviceSection">Device</h2>
       <div class="stack">
-        <button id="btnSave" class="primary" disabled>장치에 저장</button>
-        <button id="btnFirmware" disabled>펌웨어 설치·업데이트</button>
+        <button id="btnSave" class="primary" disabled data-i18n="side.save">Save to device</button>
+        <p id="saveState" class="save-state" aria-live="polite"></p>
+        <button id="btnFirmware" disabled data-i18n="side.firmware">Install / update firmware</button>
         <div class="split">
-          <button id="btnExport" class="ghost">JSON 내보내기</button>
-          <label class="ghost button">JSON 가져오기<input type="file" id="fileImport" accept=".json" hidden></label>
+          <button id="btnExport" class="ghost" data-i18n="side.export">Export JSON</button>
+          <label class="ghost button"><span data-i18n="side.import">Import JSON</span><input type="file" id="fileImport" accept=".json" hidden></label>
         </div>
       </div>
       <dl class="info" id="devInfo"></dl>
       <details class="serial">
-        <summary>시리얼 (재시작·부트로더)</summary>
+        <summary data-i18n="serial.title">Serial (restart, bootloader)</summary>
         <div class="stack">
-          <button id="btnRestart" class="ghost">장치 재시작</button>
-          <button id="btnUf2" class="ghost">UF2 부트로더로 재시작</button>
-          <label class="ghost button">CircuitPython .uf2 굽기<input type="file" id="fileUf2" accept=".uf2" hidden></label>
-          <p class="hint">Chrome·Edge에서만 동작해요. 부트로더로 재시작하면 RPI-RP2 드라이브가 나타나고, .uf2 파일을 그 드라이브에 쓰면 CircuitPython이 교체됩니다.</p>
+          <button id="btnRestart" class="ghost" data-i18n="serial.restart">Restart device</button>
+          <button id="btnUf2" class="ghost" data-i18n="serial.uf2">Restart into UF2 bootloader</button>
+          <label class="ghost button"><span data-i18n="serial.flash">Flash CircuitPython .uf2</span><input type="file" id="fileUf2" accept=".uf2" hidden></label>
+          <p class="hint" data-i18n="serial.hint">Chrome and Edge only.</p>
         </div>
       </details>
     </section>
@@ -68,15 +73,15 @@
   <section class="panel center">
     <div class="row-head">
       <div class="title-edit">
-        <input id="profName" class="h-input" aria-label="프로필 이름">
+        <input id="profName" class="h-input" data-i18n-aria="prof.name" aria-label="Profile name">
         <span class="tag" id="profTag"></span>
       </div>
       <div class="tabs" role="tablist" id="viewTabs">
-        <button role="tab" data-view="install">설치</button>
-        <button role="tab" data-view="usage" aria-selected="true">사용법</button>
-        <button role="tab" data-view="keys">키 매핑</button>
-        <button role="tab" data-view="settings">프로필 설정</button>
-        <button role="tab" data-view="json">JSON</button>
+        <button role="tab" data-view="install" data-i18n="tab.install">Install</button>
+        <button role="tab" data-view="usage" aria-selected="true" data-i18n="tab.usage">Usage</button>
+        <button role="tab" data-view="keys" data-i18n="tab.keys">Key mapping</button>
+        <button role="tab" data-view="settings" data-i18n="tab.settings">Profile settings</button>
+        <button role="tab" data-view="json" data-i18n="tab.json">JSON</button>
       </div>
     </div>
 
@@ -88,31 +93,31 @@
       <div class="layers" id="layers"></div>
       <div class="layer-meta" id="layerMeta"></div>
       <div class="face" id="face"></div>
-      <p class="hint">키를 눌러 편집하세요. 위쪽 레이어부터 조건이 맞는 첫 레이어가 키를 정의해요. 흐리게 보이는 키는 이 레이어에 정의가 없어서 다른 레이어 설정을 따릅니다.</p>
+      <p class="hint" data-i18n="face.hint">Click a switch to edit it.</p>
     </div>
 
     <div id="view-settings" hidden>
       <div class="grid2">
-        <label class="field"><span>표시 태그</span><input id="setTag"></label>
-        <label class="field"><span>MIDI 채널 (1-16)</span><input id="setChannel" type="number" min="1" max="16"></label>
-        <label class="field"><span>길게 누르기 (ms)</span><input id="setHold" type="number" min="100" step="50"></label>
-        <label class="field"><span>더블 클릭 간격 (ms)</span><input id="setDouble" type="number" min="100" step="50"></label>
-        <label class="field check"><input id="setPower" type="checkbox"><span>전원/배터리 표시 (pw 변수)</span></label>
+        <label class="field"><span data-i18n="set.tag">Display tag</span><input id="setTag"></label>
+        <label class="field"><span data-i18n="set.channel">MIDI channel (1-16)</span><input id="setChannel" type="number" min="1" max="16"></label>
+        <label class="field"><span data-i18n="set.hold">Long press (ms)</span><input id="setHold" type="number" min="100" step="50"></label>
+        <label class="field"><span data-i18n="set.double">Double click window (ms)</span><input id="setDouble" type="number" min="100" step="50"></label>
+        <label class="field check"><input id="setPower" type="checkbox"><span data-i18n="set.power">Show power / battery</span></label>
       </div>
-      <label class="field"><span>상태 변수 <code>state</code> (JSON)</span><textarea id="setState" rows="5" class="mono"></textarea></label>
-      <label class="field"><span>상수 <code>consts</code> (JSON)</span><textarea id="setConsts" rows="6" class="mono"></textarea></label>
-      <label class="field"><span>파생 변수 <code>vars</code> (JSON, [이름, 식] 목록. 순서대로 계산)</span><textarea id="setVars" rows="4" class="mono"></textarea></label>
+      <label class="field"><span><code>state</code> · <span data-i18n="set.state">State variables (JSON)</span></span><textarea id="setState" rows="5" class="mono"></textarea></label>
+      <label class="field"><span><code>consts</code> · <span data-i18n="set.consts">Constants (JSON)</span></span><textarea id="setConsts" rows="6" class="mono"></textarea></label>
+      <label class="field"><span><code>vars</code> · <span data-i18n="set.vars">Derived variables</span></span><textarea id="setVars" rows="4" class="mono"></textarea></label>
       <div class="grid2">
-        <label class="field"><span>상태바 템플릿</span><input id="setBar" class="mono"></label>
-        <label class="field"><span>상태바 색</span><input id="setBarColor" class="mono"></label>
+        <label class="field"><span data-i18n="set.bar">Status bar template</span><input id="setBar" class="mono"></label>
+        <label class="field"><span data-i18n="set.barColor">Status bar color</span><input id="setBarColor" class="mono"></label>
       </div>
-      <label class="field"><span>메인 화면 템플릿 (기본값, 레이어별로 덮어쓰기 가능)</span><textarea id="setMain" rows="2" class="mono"></textarea></label>
+      <label class="field"><span data-i18n="set.main">Main screen template</span><textarea id="setMain" rows="2" class="mono"></textarea></label>
       <p class="err" id="settingsErr" hidden></p>
     </div>
 
     <div id="view-json" hidden>
-      <textarea id="jsonText" class="mono json" spellcheck="false" aria-label="프로필 JSON"></textarea>
-      <div class="split"><button id="btnApplyJson">JSON 적용</button><span class="err" id="jsonErr"></span></div>
+      <textarea id="jsonText" class="mono json" spellcheck="false" data-i18n-aria="json.aria" aria-label="Profile JSON"></textarea>
+      <div class="split"><button id="btnApplyJson" data-i18n="json.apply">Apply JSON</button><span class="err" id="jsonErr"></span></div>
     </div>
   </section>
 
@@ -121,18 +126,20 @@
 </main>
 
 <footer class="foot">
-  <span>PySwitch (GPLv3, Thomas Weber) 기반 · multimode 확장 · Quad Cortex, Anagram, MIDI Captain은 각 제조사의 상표이며 이 도구는 제조사와 무관합니다.</span>
+  <span data-i18n="app.footer">Based on PySwitch (GPLv3, Thomas Weber).</span>
   <span id="fwVersion"></span>
 </footer>
 
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
 <template id="tplOp">
   <div class="op">
-    <select class="op-type" aria-label="동작 종류"></select>
+    <select class="op-type"></select>
     <div class="op-fields"></div>
     <div class="op-tools">
-      <button class="icon up" title="위로" aria-label="위로">↑</button>
-      <button class="icon down" title="아래로" aria-label="아래로">↓</button>
-      <button class="icon del" title="삭제" aria-label="삭제">✕</button>
+      <button class="icon up">↑</button>
+      <button class="icon down">↓</button>
+      <button class="icon del">✕</button>
     </div>
   </div>
 </template>

@@ -2,6 +2,7 @@
 // to a MIDI Captain drive using the File System Access API (Chrome / Edge).
 import { presetsFor } from "./presets.js";
 import { namespace, renderTemplate, evalValue } from "./pyeval.js";
+import { t, lang, setLang, LANGS, pick, assign, applyStatic } from "./i18n.js";
 
 // Mirrors multimode/overlay/lib/multimode/devices.py
 const DEVICES = {
@@ -16,27 +17,29 @@ const COLORS = {
   RED: [255, 0, 0], LIGHT_RED: [255, 100, 100], PINK: [255, 125, 70], PURPLE: [180, 0, 120],
   DARK_PURPLE: [100, 0, 65], LIGHT_GREEN: [100, 255, 100], GREEN: [0, 255, 0], DARK_GREEN: [73, 110, 41],
   TURQUOISE: [64, 242, 208], BLUE: [0, 0, 255], LIGHT_BLUE: [100, 100, 255], DARK_BLUE: [0, 0, 120],
-  GRAY: [190, 190, 190], DARK_GRAY: [50, 50, 50], BLACK: [0, 0, 0],
+  GRAY: [190, 190, 190], DARK_GRAY: [50, 50, 50], BLACK: [0, 0, 0], CYAN: [0, 255, 255],
 };
 
+// Titles are translation keys (see i18n.js), resolved when rendering
 const TRIGGERS = [
-  { id: "short", title: "짧게 누르기" },
-  { id: "long", title: "길게 누르기" },
-  { id: "double", title: "더블 클릭", hint: "정의하면 짧게 누르기가 더블 클릭 간격만큼 늦게 실행돼요" },
+  { id: "short", title: "trig.short" },
+  { id: "long", title: "trig.long" },
+  { id: "double", title: "trig.double", hint: "trig.doubleHint" },
 ];
 
-// Operation types and their fields: [attribute, label, placeholder]
+// Operation types and their fields: [attribute, label key, placeholder (key if it starts with "f.")]
 const OPS = {
-  cc:     { title: "CC 전송", fields: [["cc", "CC 번호", "44"], ["val", "값", "127"], ["ch", "채널", "기본"]] },
-  pc:     { title: "PC 전송", fields: [["pc", "프로그램", "0"], ["ch", "채널", "기본"]] },
-  note:   { title: "노트 온", fields: [["note", "노트", "60"], ["vel", "벨로시티", "127"], ["ch", "채널", "기본"]] },
-  raw:    { title: "원시 바이트", fields: [["raw", "바이트 (쉼표)", "176, 44, 127"]] },
-  set:    { title: "변수 설정", fields: [["set", "변수", "gig"], ["to", "값/식", "1"]] },
-  toggle: { title: "변수 토글", fields: [["toggle", "변수", "gig"]] },
-  inc:    { title: "변수 증감", fields: [["inc", "변수", "sc"], ["by", "증감", "1"], ["mod", "순환(mod)", ""], ["lo", "시작값", "0"], ["min", "최소", ""], ["max", "최대", ""]] },
-  mode:   { title: "모드 전환", fields: [["mode", "대상", "next"]] },
-  if:     { title: "조건", fields: [["if", "조건식", "gig"], ["then", "참일 때 (JSON)", "[]"], ["else", "거짓일 때 (JSON)", "[]"]] },
+  cc:     { title: "op.cc", fields: [["cc", "f.cc", "44"], ["val", "f.val", "127"], ["ch", "f.ch", "f.chDefault"]] },
+  pc:     { title: "op.pc", fields: [["pc", "f.pc", "0"], ["ch", "f.ch", "f.chDefault"]] },
+  note:   { title: "op.note", fields: [["note", "f.note", "60"], ["vel", "f.vel", "127"], ["ch", "f.ch", "f.chDefault"]] },
+  raw:    { title: "op.raw", fields: [["raw", "f.raw", "176, 44, 127"]] },
+  set:    { title: "op.set", fields: [["set", "f.var", "gig"], ["to", "f.to", "1"]] },
+  toggle: { title: "op.toggle", fields: [["toggle", "f.var", "gig"]] },
+  inc:    { title: "op.inc", fields: [["inc", "f.var", "sc"], ["by", "f.by", "1"], ["mod", "f.mod", ""], ["lo", "f.lo", "0"], ["min", "f.min", ""], ["max", "f.max", ""]] },
+  mode:   { title: "op.mode", fields: [["mode", "f.target", "next"]] },
+  if:     { title: "op.if", fields: [["if", "f.if", "gig"], ["then", "f.then", "[]"], ["else", "f.else", "[]"]] },
 };
+const ph = v => (v.startsWith("f.") ? t(v) : v);
 const NAME_FIELDS = new Set(["set", "toggle", "inc", "mode"]);
 const JSON_FIELDS = new Set(["then", "else"]);
 
@@ -68,6 +71,18 @@ const prof = () => S.profiles[S.mode];
 const device = () => DEVICES[S.modes.device] || DEVICES.mini6;
 const deviceKeys = () => device().rows.flat();
 
+// Transient result message, fixed at the bottom so it is visible wherever the page is scrolled.
+// Errors stay until closed.
+let toastTimer = null;
+function toast(text, kind = "ok") {
+  const el = $("#toast");
+  clearTimeout(toastTimer);
+  el.className = "toast " + kind;
+  el.replaceChildren(h("span", {}, text), h("button", { class: "icon", "aria-label": t("toast.close"), title: t("toast.close"), onclick: () => { el.hidden = true; } }, "✕"));
+  el.hidden = false;
+  if (kind !== "error") toastTimer = setTimeout(() => { el.hidden = true; }, 7000);
+}
+
 function notice(text, kind = "") {
   const n = $("#notice");
   n.hidden = !text;
@@ -77,7 +92,20 @@ function notice(text, kind = "") {
 
 function markDirty() {
   S.dirty = true;
-  $("#btnSave").textContent = S.dir ? "장치에 저장 •" : "장치에 저장";
+  renderSaveState();
+}
+
+// Save button and the status line below it
+function renderSaveState() {
+  const b = $("#btnSave");
+  b.disabled = !S.dir || S.saving;
+  b.textContent = S.saving ? t("save.saving") : S.justSaved ? t("save.saved") : t("side.save");
+  b.classList.toggle("dirty", !!(S.dir && S.dirty));
+  const st = $("#saveState");
+  st.className = "save-state" + (S.dirty ? " dirty" : "");
+  st.textContent = !S.dir ? "" : S.dirty ? t("save.statusDirty")
+    : S.lastSaved ? t("save.statusSaved", { time: S.lastSaved.toLocaleTimeString(document.documentElement.lang, { hour: "2-digit", minute: "2-digit" }) })
+    : t("save.statusLoaded");
 }
 
 /* ---------- Loading ---------- */
@@ -88,16 +116,57 @@ async function fetchJson(url) {
   return r.json();
 }
 
+/* Descriptions are only used by the editor, so they live in a separate file on the device
+   (profiles/<name>.desc.json) and the firmware never has to parse them. */
+
+function splitDesc(p) {
+  const prof = structuredClone(p);
+  const desc = { layers: [] };
+  if (prof.desc) { desc.profile = prof.desc; delete prof.desc; }
+  for (const l of prof.layers || []) {
+    const d = {};
+    if (l.desc) { d.desc = l.desc; delete l.desc; }
+    for (const [k, kd] of Object.entries(l.keys || {})) {
+      if (kd.desc) { (d.keys = d.keys || {})[k] = kd.desc; delete kd.desc; }
+    }
+    desc.layers.push(d);
+  }
+  return [prof, desc];
+}
+
+function mergeDesc(p, desc) {
+  if (!desc) return p;
+  if (desc.profile) p.desc = desc.profile;
+  (desc.layers || []).forEach((d, i) => {
+    const l = p.layers?.[i];
+    if (!l) return;
+    if (d.desc) l.desc = d.desc;
+    for (const [k, v] of Object.entries(d.keys || {})) if (l.keys?.[k]) l.keys[k].desc = v;
+  });
+  return p;
+}
+
+// Writes all profiles and returns { path: content } of the written files
+async function writeProfiles(dir) {
+  const files = {};
+  for (const n of S.modes.modes) {
+    const [prof, desc] = splitDesc(S.profiles[n]);
+    files[`profiles/${n}.json`] = JSON.stringify(prof, null, 2) + "\n";
+    files[`profiles/${n}.desc.json`] = JSON.stringify(desc, null, 1) + "\n";
+  }
+  files["profiles/modes.json"] = JSON.stringify(S.modes, null, 2) + "\n";
+  for (const [path, text] of Object.entries(files)) await writeFile(dir, path, text);
+  return files;
+}
+
 async function loadDefaults() {
   S.modes = await fetchJson("profiles/modes.json");
   const names = await fetchJson("profiles/index.json").catch(() => S.modes.modes);
-  for (const n of names) S.profiles[n] = await fetchJson(`profiles/${n}.json`);
+  for (const n of names) {
+    S.profiles[n] = mergeDesc(await fetchJson(`profiles/${n}.json`), await fetchJson(`profiles/${n}.desc.json`).catch(() => null));
+  }
   S.mode = S.modes.modes[0];
-  try {
-    const m = await fetchJson("firmware/manifest.json");
-    S.manifest = m;
-    $("#fwVersion").textContent = "펌웨어 " + m.version;
-  } catch { S.manifest = null; }
+  try { S.manifest = await fetchJson("firmware/manifest.json"); } catch { S.manifest = null; }
 }
 
 /* ---------- Device file access ---------- */
@@ -133,7 +202,7 @@ async function sha256(bytes) {
 
 async function connect() {
   if (!("showDirectoryPicker" in window)) {
-    notice("이 브라우저는 드라이브 쓰기를 지원하지 않아요. 데스크톱 Chrome이나 Edge로 열어주세요.", "error");
+    notice(t("conn.unsupported"), "error");
     return;
   }
   let dir;
@@ -142,7 +211,7 @@ async function connect() {
 
   const boot = await readText(dir, "boot_out.txt");
   if (!boot || !boot.includes("CircuitPython")) {
-    notice("선택한 폴더에 boot_out.txt가 없어요. MIDICAPTAIN(또는 CIRCUITPY) 드라이브의 최상위 폴더를 선택하세요. 드라이브가 안 보이면 1번 스위치를 누른 채 전원을 켜세요.", "error");
+    notice(t("conn.noBootOut"), "error");
     return;
   }
   S.dir = dir;
@@ -161,21 +230,23 @@ async function connect() {
       const modes = JSON.parse(modesText);
       const profiles = {};
       for (const n of modes.modes) {
-        const t = await readText(dir, `profiles/${n}.json`);
-        if (t) profiles[n] = JSON.parse(t);
+        const text = await readText(dir, `profiles/${n}.json`);
+        const desc = await readText(dir, `profiles/${n}.desc.json`);
+        if (text) profiles[n] = mergeDesc(JSON.parse(text), desc ? JSON.parse(desc) : null);
       }
       S.modes = modes;
       Object.assign(S.profiles, profiles);
       S.mode = modes.modes.find(n => S.profiles[n]) || S.mode;
       S.layer = 0; S.key = null;
-      notice(`장치 프로필을 불러왔어요: ${modes.modes.join(", ")}`, "ok");
+      notice(t("conn.loaded", { list: modes.modes.join(", ") }), "ok");
     } catch (e) {
-      notice("장치의 프로필을 읽지 못했어요 (" + e.message + "). 기본 프로필을 보여줍니다.", "error");
+      notice(t("conn.loadFailed", { e: e.message }), "error");
     }
   } else {
     notice("");
   }
   S.dirty = false;
+  S.lastSaved = null;
   render();
 }
 
@@ -183,41 +254,52 @@ function validate() {
   const errs = [];
   for (const n of S.modes.modes) {
     const p = S.profiles[n];
-    if (!p) { errs.push(`${n}: 프로필 파일이 없어요`); continue; }
+    if (!p) { errs.push(t("val.missing", { n })); continue; }
     const names = new Set([...Object.keys(p.state || {}), ...(p.vars || []).map(v => v[0])]);
     for (const l of p.layers || []) {
       for (const [k, kd] of Object.entries(l.keys || {})) {
-        for (const t of TRIGGERS) {
+        const where = `${n} / ${l.name} / ${k}`;
+        for (const tr of TRIGGERS) {
           const walk = ops => (ops || []).forEach(op => {
-            const type = Object.keys(OPS).find(t => t in op);
-            if (!type) errs.push(`${n} / ${l.name} / ${k}: 알 수 없는 동작 ${JSON.stringify(op)}`);
+            const type = Object.keys(OPS).find(o => o in op);
+            if (!type) errs.push(t("val.unknownOp", { where, op: JSON.stringify(op) }));
             for (const a of ["set", "toggle", "inc"]) {
-              if (a in op && !names.has(op[a])) errs.push(`${n} / ${l.name} / ${k}: 변수 '${op[a]}'가 state에 없어요`);
+              if (a in op && !names.has(op[a])) errs.push(t("val.unknownVar", { where, v: op[a] }));
             }
-            if (op.mode && !["next", "prev", ...S.modes.modes].includes(op.mode)) errs.push(`${n} / ${k}: 모드 '${op.mode}'가 없어요`);
+            if (op.mode && !["next", "prev", ...S.modes.modes].includes(op.mode)) errs.push(t("val.unknownMode", { where, v: op.mode }));
             walk(op.then); walk(op.else);
           });
-          walk(kd[t.id]);
+          walk(kd[tr.id]);
         }
       }
     }
   }
-  if (!S.modes.modes.includes(S.modes.default)) errs.push("기본 모드가 모드 목록에 없어요");
+  if (!S.modes.modes.includes(S.modes.default)) errs.push(t("val.default"));
   return errs;
 }
 
 async function save() {
   const errs = validate();
-  if (errs.length) { notice("저장하지 않았어요. 고칠 곳: " + errs.join(" · "), "error"); return; }
-  if (!S.dir) { notice("먼저 장치 드라이브를 연결하세요."); return; }
+  if (errs.length) { toast(t("save.invalid", { list: errs.join(" · ") }), "error"); return; }
+  if (!S.dir) { toast(t("save.connectFirst"), "error"); return; }
+  S.saving = true;
+  renderSaveState();
   try {
-    for (const n of S.modes.modes) await writeFile(S.dir, `profiles/${n}.json`, JSON.stringify(S.profiles[n], null, 2) + "\n");
-    await writeFile(S.dir, "profiles/modes.json", JSON.stringify(S.modes, null, 2) + "\n");
+    const files = await writeProfiles(S.dir);
+    // Read everything back, so a successful message really means the device has the data
+    for (const [path, text] of Object.entries(files)) {
+      if ((await readText(S.dir, path)) !== text) throw Object.assign(new Error(path), { mismatch: path });
+    }
     S.dirty = false;
-    notice("저장했어요. 스위치를 누르지 않은 채 장치 전원을 다시 켜면 적용됩니다.", "ok");
+    S.lastSaved = new Date();
+    S.justSaved = true;
+    setTimeout(() => { S.justSaved = false; renderSaveState(); }, 2500);
+    notice("");
+    toast(t("save.verified", { n: Object.keys(files).length }), "ok");
   } catch (e) {
-    notice("저장하지 못했어요: " + e.message + ". 드라이브가 연결돼 있는지 확인하세요.", "error");
+    toast(e.mismatch ? t("save.mismatch", { file: e.mismatch }) : t("save.failed", { e: e.message }), "error");
   }
+  S.saving = false;
   render();
 }
 
@@ -228,7 +310,7 @@ async function installFirmware(fromWizard = false) {
   try {
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
-      notice(`펌웨어 확인 중 ${i + 1}/${files.length}: ${f.path}`);
+      notice(t("fw.checking", { i: i + 1, n: files.length, path: f.path }));
       const cur = await readBytes(S.dir, f.path);
       if (cur && cur.length === f.size && await sha256(cur) === f.sha256) continue;
       const r = await fetch("firmware/" + f.path, { cache: "no-cache" });
@@ -238,15 +320,12 @@ async function installFirmware(fromWizard = false) {
     }
     if (fromWizard) return;
     const hasProfiles = await readText(S.dir, "profiles/modes.json");
-    if (!hasProfiles) {
-      for (const n of S.modes.modes) await writeFile(S.dir, `profiles/${n}.json`, JSON.stringify(S.profiles[n], null, 2) + "\n");
-      await writeFile(S.dir, "profiles/modes.json", JSON.stringify(S.modes, null, 2) + "\n");
-    }
+    if (!hasProfiles) await writeProfiles(S.dir);
     S.installed = S.manifest.version;
-    notice(`펌웨어 ${S.manifest.version} 설치 완료: 파일 ${written}개를 새로 썼어요 (나머지는 이미 최신).`, "ok");
+    notice(t("fw.done", { v: S.manifest.version, n: written }), "ok");
   } catch (e) {
     if (fromWizard) throw e;
-    notice("펌웨어 설치가 중간에 멈췄어요: " + e.message + ". 다시 실행하면 남은 파일만 씁니다.", "error");
+    notice(t("fw.failed", { e: e.message }), "error");
   }
   if (!fromWizard) render();
 }
@@ -292,11 +371,11 @@ async function backupDevice() {
   try {
     const dst = await target.getDirectoryHandle(name, { create: true });
     await writeFile(dst, "boot_out.txt", (await readText(S.dir, "boot_out.txt")) || "");
-    const n = await copyTree(S.dir, dst, (i, f) => notice(`백업 중 ${i}: ${f}`));
+    const n = await copyTree(S.dir, dst, (i, f) => notice(t("inst.backingUp", { i, f })));
     S.backup = { name, files: n };
-    notice(`백업했어요: 선택한 폴더 안의 '${name}' (파일 ${n}개).`, "ok");
+    notice(t("inst.backedUp", { name, n }), "ok");
   } catch (e) {
-    notice("백업하지 못했어요: " + e.message + ". 다른 폴더(예: 문서)를 골라 다시 시도하세요.", "error");
+    notice(t("inst.backupFailed", { e: e.message }), "error");
   }
   render();
 }
@@ -316,19 +395,18 @@ async function runInstall() {
   const dev = $("#instDevice")?.value || S.modes.device;
   try {
     if (clean) {
-      notice("기존 파일을 지우는 중…");
+      notice(t("inst.cleaning"));
       await cleanDevice();
     }
     S.modes.device = dev;
     await installFirmware(true);
-    for (const n of S.modes.modes) await writeFile(S.dir, `profiles/${n}.json`, JSON.stringify(S.profiles[n], null, 2) + "\n");
-    await writeFile(S.dir, "profiles/modes.json", JSON.stringify(S.modes, null, 2) + "\n");
+    await writeProfiles(S.dir);
     S.kind = "multimode";
     S.dirty = false;
     S.installDone = true;
-    notice("설치를 마쳤어요. 아래 '마무리' 순서대로 장치를 다시 켜세요.", "ok");
+    notice(t("inst.done"), "ok");
   } catch (e) {
-    notice("설치가 중간에 멈췄어요: " + e.message + ". 드라이브 연결을 확인하고 다시 실행하세요. 백업은 그대로 있어요.", "error");
+    notice(t("inst.failed", { e: e.message }), "error");
   }
   render();
 }
@@ -337,17 +415,17 @@ async function restoreBackup() {
   let src;
   try { src = await window.showDirectoryPicker({ id: "mcbackup", mode: "read" }); } catch { return; }
   if (!(await readText(src, "boot_out.txt")) || !(await exists(src, "code.py"))) {
-    notice("백업 폴더가 아니에요. 'midicaptain-backup-…' 폴더 자체를 선택하세요.", "error");
+    notice(t("inst.notBackup"), "error");
     return;
   }
   try {
-    notice("장치 파일을 지우는 중…");
+    notice(t("inst.wiping"));
     await cleanDevice();
-    const n = await copyTree(src, S.dir, (i, f) => notice(`복원 중 ${i}: ${f}`));
+    const n = await copyTree(src, S.dir, (i, f) => notice(t("inst.restoring", { i, f })));
     S.kind = "other"; S.installed = null;
-    notice(`복원했어요 (파일 ${n}개). 스위치를 누르지 않고 장치를 다시 켜면 백업한 펌웨어로 돌아가요.`, "ok");
+    notice(t("inst.restored", { n }), "ok");
   } catch (e) {
-    notice("복원이 중간에 멈췄어요: " + e.message + ". 다시 실행하면 처음부터 다시 복사해요.", "error");
+    notice(t("inst.restoreFailed", { e: e.message }), "error");
   }
   render();
 }
@@ -360,62 +438,63 @@ function renderInstall() {
 
   if (!S.dir) {
     v.replaceChildren(
-      h("p", { class: "lead" }, "순정 펌웨어나 기존 PySwitch가 들어 있는 MIDI Captain에 이 펌웨어를 설치해요. 원래 파일은 먼저 PC에 백업하고, 언제든 되돌릴 수 있어요."),
-      step(1, "장치 드라이브 열기", "todo",
-        h("p", {}, "USB 케이블로 PC에 연결한 뒤, ", h("b", {}, "1번 스위치(왼쪽 위)를 누른 채"), " 장치 전원을 켜세요. MIDICAPTAIN이라는 드라이브가 나타나요."),
-        h("button", { class: "primary", onclick: connect }, "장치 드라이브 연결"),
-        h("p", { class: "hint" }, "데스크톱 Chrome 또는 Edge가 필요해요. 드라이브 최상위 폴더를 고르고, 파일 수정 권한을 허용하세요.")));
+      h("p", { class: "lead" }, t("inst.lead")),
+      step(1, t("inst.s1"), "todo",
+        h("p", {}, t("inst.s1a"), h("b", {}, t("inst.s1b")), t("inst.s1c")),
+        h("button", { class: "primary", onclick: connect }, t("conn.connect")),
+        h("p", { class: "hint" }, t("inst.s1hint"))));
     return;
   }
 
   const cpOk = S.cp?.[0] === SUPPORTED_CP;
-  const kindText = { multimode: "multimode 설치됨", pyswitch: "PySwitch (multimode 없음)", other: "순정 또는 다른 펌웨어" }[S.kind];
+  const kindText = t("inst.kind." + S.kind);
 
   const cpBody = cpOk
     ? [h("p", {}, `${S.boot.replace("Adafruit ", "")} · ${kindText}`)]
     : [
-        h("p", { class: "err" }, `이 장치는 CircuitPython ${S.cp.join(".")}이에요. 이 펌웨어는 CircuitPython 7.x에서만 동작해요 (PySwitch에 포함된 .mpy 라이브러리가 7.x용).`),
+        h("p", { class: "err" }, t("inst.cpBad", { v: S.cp.join(".") })),
         h("ol", {},
-          h("li", {}, "아래 2단계 백업을 먼저 하세요."),
-          h("li", {}, h("a", { href: "https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/raspberry_pi_pico/en_US/", target: "_blank", rel: "noopener" }, "CircuitPython 7.3.3 (raspberry_pi_pico, en_US) .uf2"), " 파일을 받으세요."),
-          h("li", {}, "왼쪽 '시리얼 (재시작·부트로더)'에서 'UF2 부트로더로 재시작' → '.uf2 굽기'를 실행하세요."),
-          h("li", {}, "다시 1번 스위치를 누른 채 켜고, 이 페이지에서 드라이브를 다시 연결하세요.")),
+          h("li", {}, t("inst.cp1")),
+          h("li", {}, h("a", { href: "https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/raspberry_pi_pico/en_US/", target: "_blank", rel: "noopener" }, "CircuitPython 7.3.3 (raspberry_pi_pico, en_US) .uf2"), t("inst.cp2")),
+          h("li", {}, t("inst.cp3")),
+          h("li", {}, t("inst.cp4"))),
       ];
 
   const backupDone = !!S.backup;
   const allowNoBackup = S.kind !== "other";
   const canInstall = cpOk && (backupDone || (allowNoBackup && S.skipBackup));
 
-  v.replaceChildren(
-    step(1, "장치 확인", cpOk ? "done" : "warn", ...cpBody),
-    step(2, "원래 파일 백업", backupDone ? "done" : "todo",
-      h("p", {}, "장치의 모든 파일을 PC 폴더로 복사해요. 순정 펌웨어는 다시 받을 수 없으니 꼭 보관하세요 (특히 license 폴더)."),
-      h("button", { class: backupDone ? "" : "primary", onclick: backupDevice }, backupDone ? "다시 백업" : "백업할 폴더 선택"),
-      backupDone ? h("p", { class: "hint" }, `저장됨: ${S.backup.name} (파일 ${S.backup.files}개)`) : null,
-      allowNoBackup && !backupDone ? h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instSkip", checked: !!S.skipBackup, onchange: e => { S.skipBackup = e.target.checked; render(); } }), h("span", {}, "백업 없이 진행 (이미 PySwitch를 쓰고 있고 백업이 있어요)")) : null),
-    step(3, "설치", S.installDone ? "done" : "todo",
-      h("label", { class: "field" }, h("span", {}, "기기 모델"),
+  v.replaceChildren(...[
+    step(1, t("inst.check"), cpOk ? "done" : "warn", ...cpBody),
+    step(2, t("inst.s2"), backupDone ? "done" : "todo",
+      h("p", {}, t("inst.s2text")),
+      h("button", { class: backupDone ? "" : "primary", onclick: backupDevice }, backupDone ? t("inst.backupAgain") : t("inst.backup")),
+      backupDone ? h("p", { class: "hint" }, t("inst.backupSaved", { name: S.backup.name, n: S.backup.files })) : null,
+      allowNoBackup && !backupDone ? h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instSkip", checked: !!S.skipBackup, onchange: e => { S.skipBackup = e.target.checked; render(); } }), h("span", {}, t("inst.skip"))) : null),
+    step(3, t("inst.s3"), S.installDone ? "done" : "todo",
+      h("label", { class: "field" }, h("span", {}, t("inst.model")),
         h("select", { id: "instDevice" }, ...Object.entries(DEVICES).map(([id, d]) => h("option", { value: id, selected: id === S.modes.device }, d.title)))),
       h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instClean", checked: S.kind !== "multimode" }),
-        h("span", {}, "기존 파일을 지우고 설치 (권장. license 폴더는 남겨요)")),
-      h("p", { class: "hint" }, `펌웨어 ${S.manifest?.version || "?"} 파일 ${S.manifest?.files.length || 0}개와 모드 ${S.modes.modes.length}개(${S.modes.modes.join(", ")})를 써요.`),
-      h("button", { class: "primary", disabled: !canInstall || !S.manifest, onclick: runInstall }, "설치하기"),
-      !cpOk ? h("p", { class: "hint" }, "CircuitPython 7.x로 바꾼 뒤 설치할 수 있어요.") : (!canInstall ? h("p", { class: "hint" }, "백업을 마치면 설치할 수 있어요.") : null)),
-    step(4, "마무리", S.installDone ? "todo" : "later",
+        h("span", {}, t("inst.clean"))),
+      h("p", { class: "hint" }, t("inst.writes", { v: S.manifest?.version || "?", n: S.manifest?.files.length || 0, m: S.modes.modes.length, list: S.modes.modes.join(", ") })),
+      h("button", { class: "primary", disabled: !canInstall || !S.manifest, onclick: runInstall }, t("inst.go")),
+      !cpOk ? h("p", { class: "hint" }, t("inst.needCp")) : (!canInstall ? h("p", { class: "hint" }, t("inst.needBackup")) : null)),
+    step(4, t("inst.s4"), S.installDone ? "todo" : "later",
       h("ol", {},
-        h("li", {}, "Finder에서 드라이브를 꺼내기(⏏) 하고, 완전히 사라질 때까지 기다리세요."),
-        h("li", {}, h("b", {}, "스위치를 누르지 않고"), " 장치를 다시 켜세요. 화면에 모드와 키 라벨이 나오면 성공이에요."),
-        h("li", {}, "설정을 바꿀 때는 다시 1번 스위치를 누른 채 켜고 이 페이지에서 연결하면 돼요."))),
+        h("li", {}, t("inst.s4a")),
+        h("li", {}, t("inst.s4b1"), h("b", {}, t("inst.s4b2")), t("inst.s4b3")),
+        h("li", {}, t("inst.s4c")))),
     h("section", { class: "restore" },
-      h("h3", {}, "되돌리기"),
-      h("p", { class: "hint" }, "백업 폴더를 고르면 장치 파일을 지우고 백업 내용으로 되돌려요."),
-      h("button", { class: "ghost", onclick: restoreBackup }, "백업에서 복원")));
+      h("h3", {}, t("inst.restoreTitle")),
+      h("p", { class: "hint" }, t("inst.restoreHint")),
+      h("button", { class: "ghost", onclick: restoreBackup }, t("inst.restore"))),
+  ].filter(Boolean));
 }
 
 /* ---------- Serial (Web Serial) ---------- */
 
 async function serialSend(chunks) {
-  if (!("serial" in navigator)) { notice("이 브라우저는 Web Serial을 지원하지 않아요 (Chrome·Edge 필요).", "error"); return false; }
+  if (!("serial" in navigator)) { notice(t("serial.unsupported"), "error"); return false; }
   let port;
   try { port = await navigator.serial.requestPort(); } catch { return false; }
   await port.open({ baudRate: 115200 });
@@ -428,25 +507,25 @@ async function serialSend(chunks) {
 }
 
 async function restart() {
-  if (await serialSend(["\x03", "\x03", "\x04"])) notice("재시작 명령을 보냈어요.", "ok");
+  if (await serialSend(["\x03", "\x03", "\x04"])) notice(t("serial.restarted"), "ok");
 }
 
 async function enterUf2() {
   const cmds = ["\x03", "\x03", "\r", "import microcontroller\r", "microcontroller.on_next_reset(microcontroller.RunMode.UF2)\r", "microcontroller.reset()\r"];
-  if (await serialSend(cmds)) notice("부트로더로 재시작했어요. RPI-RP2 드라이브가 나타나면 'CircuitPython .uf2 굽기'를 누르세요.", "ok");
+  if (await serialSend(cmds)) notice(t("serial.uf2Done"), "ok");
 }
 
 async function flashUf2(file) {
   if (!file) return;
   let dir;
   try { dir = await window.showDirectoryPicker({ id: "rpirp2", mode: "readwrite" }); } catch { return; }
-  if (!(await readText(dir, "INFO_UF2.TXT"))) { notice("RPI-RP2 드라이브가 아니에요 (INFO_UF2.TXT 없음).", "error"); return; }
+  if (!(await readText(dir, "INFO_UF2.TXT"))) { notice(t("serial.notRp2"), "error"); return; }
   try {
     await writeFile(dir, file.name, new Uint8Array(await file.arrayBuffer()));
-    notice("UF2를 썼어요. 장치가 자동으로 재시작합니다. 이후 1번 스위치를 누른 채 다시 켜고 펌웨어를 설치하세요.", "ok");
+    notice(t("serial.flashed"), "ok");
   } catch (e) {
     // The drive disappears as soon as the write completes, which can surface as an error
-    notice("UF2 쓰기가 끝났거나 중단됐어요 (" + e.message + "). 장치가 재시작했다면 정상입니다.");
+    notice(t("serial.flashMaybe", { e: e.message }));
   }
 }
 
@@ -460,10 +539,10 @@ function summarize(ops) {
     if ("note" in op) return `Note ${op.note}`;
     if ("raw" in op) return `[${op.raw.join(" ")}]`;
     if ("set" in op) return `${op.set}←${op.to ?? 1}`;
-    if ("toggle" in op) return `${op.toggle} 토글`;
+    if ("toggle" in op) return t("sum.toggle", { v: op.toggle });
     if ("inc" in op) return `${op.inc} ${(op.by ?? 1) >= 0 ? "+" : ""}${op.by ?? 1}`;
-    if ("mode" in op) return `모드 ${op.mode}`;
-    if ("if" in op) return `조건(${op.if})`;
+    if ("mode" in op) return t("sum.mode", { v: op.mode });
+    if ("if" in op) return t("sum.if", { v: op.if });
     return "?";
   }).join(", ");
 }
@@ -472,35 +551,35 @@ function renderUsage() {
   const p = prof();
   const keys = deviceKeys();
   const bs = S.modes.bootSelect || {};
-  const boot = [["1", "USB 드라이브 연결 (설정·펌웨어 변경용)"],
-    ...Object.entries(bs).filter(([k]) => keys.includes(k)).map(([k, m]) => [k, `${S.profiles[m]?.name || m} 모드로 시작`])];
+  const boot = [["1", t("usage.bootDrive")],
+    ...Object.entries(bs).filter(([k]) => keys.includes(k)).map(([k, m]) => [k, t("usage.bootMode", { name: S.profiles[m]?.name || m })])];
 
   const sections = (p.layers || []).map((l, li) => {
     const rows = keys.map(k => {
       const kd = l.keys?.[k];
       if (!kd) return null;
-      const cells = TRIGGERS.map(t => {
-        const txt = kd.desc?.[t.id] || (kd[t.id]?.length ? summarize(kd[t.id]) : "");
-        return h("td", { class: kd.desc?.[t.id] ? "" : "auto" }, txt);
+      const cells = TRIGGERS.map(tr => {
+        const d = pick(kd.desc?.[tr.id]);
+        return h("td", { class: d ? "" : "auto" }, d || (kd[tr.id]?.length ? summarize(kd[tr.id]) : ""));
       });
       return h("tr", {}, h("th", { scope: "row" }, h("span", { class: "kname" }, k), h("span", { class: "klabel" }, previewText(kd.label))), ...cells);
     }).filter(Boolean);
     if (!rows.length) return null;
     return h("section", { class: "usage-layer" },
-      h("h3", {}, l.name || `레이어 ${li + 1}`, l.when ? h("code", {}, `조건: ${l.when}`) : h("code", {}, "항상")),
-      l.desc ? h("p", {}, l.desc) : null,
+      h("h3", {}, l.name || t("layer.n", { n: li + 1 }), h("code", {}, l.when ? t("usage.when", { v: l.when }) : t("usage.always"))),
+      l.desc ? h("p", {}, pick(l.desc)) : null,
       h("div", { class: "tablewrap" }, h("table", {},
-        h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "키"), ...TRIGGERS.map(t => h("th", { scope: "col" }, t.title)))),
+        h("thead", {}, h("tr", {}, h("th", { scope: "col" }, t("usage.key")), ...TRIGGERS.map(tr => h("th", { scope: "col" }, t(tr.title))))),
         h("tbody", {}, rows))));
   });
 
   $("#view-usage").replaceChildren(...[
-    p.desc ? h("p", { class: "lead" }, p.desc) : null,
+    p.desc ? h("p", { class: "lead" }, pick(p.desc)) : null,
     h("section", { class: "usage-layer" },
-      h("h3", {}, "전원 켤 때 누르고 있기"),
+      h("h3", {}, t("usage.boot")),
       h("ul", { class: "bootlist" }, boot.map(([k, t]) => h("li", {}, h("span", { class: "kname" }, k), t)))),
     ...sections,
-    h("p", { class: "hint" }, "위쪽 레이어부터 조건이 맞는 첫 레이어가 키 동작을 정해요. 흐린 글씨는 설명이 없어 실제 MIDI 메시지로 대신 보여준 거예요. 설명은 '키 매핑' 탭에서 고칠 수 있어요."),
+    h("p", { class: "hint" }, t("usage.hint")),
   ].filter(Boolean));
 }
 
@@ -541,33 +620,33 @@ function renderSide() {
     return h("li", { class: n === S.mode ? "sel" : "", onclick: () => { S.mode = n; S.layer = 0; S.key = null; render(); } },
       h("div", {},
         h("div", { class: "nm" }, p?.name || n),
-        h("div", { class: "meta" }, `${n}.json${S.modes.default === n ? " · 기본" : ""}`)),
+        h("div", { class: "meta" }, `${n}.json${S.modes.default === n ? " · " + t("side.default") : ""}`)),
       h("div", { class: "tools" },
-        h("button", { class: "icon", title: "기본 모드로", "aria-label": "기본 모드로", onclick: e => { e.stopPropagation(); S.modes.default = n; markDirty(); render(); } }, S.modes.default === n ? "★" : "☆"),
-        h("button", { class: "icon", title: "위로", "aria-label": "위로", disabled: i === 0, onclick: e => { e.stopPropagation(); move(S.modes.modes, i, -1); markDirty(); render(); } }, "↑"),
-        h("button", { class: "icon danger", title: "모드에서 빼기", "aria-label": "모드에서 빼기", disabled: S.modes.modes.length < 2, onclick: e => { e.stopPropagation(); removeMode(n); } }, "✕")));
+        h("button", { class: "icon", title: t("side.makeDefault"), "aria-label": t("side.makeDefault"), onclick: e => { e.stopPropagation(); S.modes.default = n; markDirty(); render(); } }, S.modes.default === n ? "★" : "☆"),
+        h("button", { class: "icon", title: t("side.moveUp"), "aria-label": t("side.moveUp"), disabled: i === 0, onclick: e => { e.stopPropagation(); move(S.modes.modes, i, -1); markDirty(); render(); } }, "↑"),
+        h("button", { class: "icon danger", title: t("side.removeMode"), "aria-label": t("side.removeMode"), disabled: S.modes.modes.length < 2, onclick: e => { e.stopPropagation(); removeMode(n); } }, "✕")));
   }));
 
   const keys = deviceKeys().filter(k => k !== "1");
   const bs = S.modes.bootSelect || (S.modes.bootSelect = {});
-  $("#bootSelect").replaceChildren(h("span", { class: "hint", style: "grid-column:1/-1" }, "부팅 키 (1번은 드라이브 연결용이라 제외)"),
+  $("#bootSelect").replaceChildren(h("span", { class: "hint", style: "grid-column:1/-1" }, t("side.bootKeys")),
     ...keys.flatMap(k => [
-      h("span", {}, `키 ${k}`),
+      h("span", {}, t("side.key", { k })),
       h("select", { onchange: e => { if (e.target.value) bs[k] = e.target.value; else delete bs[k]; markDirty(); } },
         h("option", { value: "" }, "—"),
         ...S.modes.modes.map(n => h("option", { value: n, selected: bs[k] === n }, n))),
     ]));
 
-  $("#connState").textContent = S.dir ? "장치 연결됨" : "장치 미연결";
+  $("#connState").textContent = S.dir ? t("conn.ok") : t("conn.none");
   $("#connState").classList.toggle("on", !!S.dir);
-  $("#btnSave").disabled = !S.dir;
-  $("#btnSave").textContent = S.dirty && S.dir ? "장치에 저장 •" : "장치에 저장";
+  renderSaveState();
+  $("#fwVersion").textContent = S.manifest ? t("app.firmware", { v: S.manifest.version }) : "";
   $("#btnFirmware").disabled = !S.dir || !S.manifest || S.kind !== "multimode";
 
   const info = [];
-  if (S.boot) info.push(["OS", S.boot.replace("Adafruit CircuitPython ", "CircuitPython ")]);
-  if (S.dir) info.push(["설치됨", S.installed || "없음"]);
-  if (S.manifest) info.push(["최신", S.manifest.version]);
+  if (S.boot) info.push([t("side.os"), S.boot.replace("Adafruit CircuitPython ", "CircuitPython ")]);
+  if (S.dir) info.push([t("side.installed"), S.installed || t("side.none")]);
+  if (S.manifest) info.push([t("side.latest"), S.manifest.version]);
   $("#devInfo").replaceChildren(...info.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]));
 }
 
@@ -577,23 +656,23 @@ function renderLayers() {
   if (S.layer >= layers.length) S.layer = Math.max(0, layers.length - 1);
 
   $("#layers").replaceChildren(
-    ...layers.map((l, i) => h("button", { class: i === S.layer ? "sel" : "", onclick: () => { S.layer = i; render(); } }, l.name || `레이어 ${i + 1}`)),
-    h("button", { class: "ghost", onclick: () => { layers.push({ name: `레이어 ${layers.length + 1}`, when: "True", keys: {} }); S.layer = layers.length - 1; markDirty(); render(); } }, "+ 레이어"));
+    ...layers.map((l, i) => h("button", { class: i === S.layer ? "sel" : "", onclick: () => { S.layer = i; render(); } }, l.name || t("layer.n", { n: i + 1 }))),
+    h("button", { class: "ghost", onclick: () => { layers.push({ name: t("layer.n", { n: layers.length + 1 }), when: "True", keys: {} }); S.layer = layers.length - 1; markDirty(); render(); } }, t("layer.add")));
 
   const l = layers[S.layer];
   if (!l) { $("#layerMeta").replaceChildren(); return; }
   $("#layerMeta").replaceChildren(
-    h("label", { class: "field" }, h("span", {}, "레이어 이름"),
+    h("label", { class: "field" }, h("span", {}, t("layer.name")),
       h("input", { id: "layerName", value: l.name || "", oninput: e => { l.name = e.target.value; markDirty(); renderLayersButtons(); } })),
-    h("label", { class: "field" }, h("span", {}, "활성 조건 (Python 식, 비우면 항상)"),
-      h("input", { id: "layerWhen", class: "mono", value: l.when ?? "", placeholder: "예: gig, not lp", oninput: e => { if (e.target.value.trim()) l.when = e.target.value; else delete l.when; markDirty(); } })),
+    h("label", { class: "field" }, h("span", {}, t("layer.when")),
+      h("input", { id: "layerWhen", class: "mono", value: l.when ?? "", placeholder: t("layer.whenPh"), oninput: e => { if (e.target.value.trim()) l.when = e.target.value; else delete l.when; markDirty(); } })),
     h("div", { class: "split" },
-      h("button", { class: "icon", title: "앞으로", "aria-label": "앞으로", disabled: S.layer === 0, onclick: () => { move(layers, S.layer, -1); S.layer--; markDirty(); render(); } }, "←"),
-      h("button", { class: "icon", title: "뒤로", "aria-label": "뒤로", disabled: S.layer === layers.length - 1, onclick: () => { move(layers, S.layer, 1); S.layer++; markDirty(); render(); } }, "→"),
-      h("button", { class: "icon danger", title: "레이어 삭제", "aria-label": "레이어 삭제", onclick: () => { if (confirm(`'${l.name}' 레이어를 삭제할까요?`)) { layers.splice(S.layer, 1); markDirty(); render(); } } }, "✕")),
-    h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, "레이어 설명"),
-      h("input", { id: "layerDesc", value: l.desc ?? "", oninput: e => { if (e.target.value) l.desc = e.target.value; else delete l.desc; markDirty(); } })),
-    h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, "이 레이어의 메인 화면 (비우면 프로필 기본값)"),
+      h("button", { class: "icon", title: t("layer.earlier"), "aria-label": t("layer.earlier"), disabled: S.layer === 0, onclick: () => { move(layers, S.layer, -1); S.layer--; markDirty(); render(); } }, "←"),
+      h("button", { class: "icon", title: t("layer.later"), "aria-label": t("layer.later"), disabled: S.layer === layers.length - 1, onclick: () => { move(layers, S.layer, 1); S.layer++; markDirty(); render(); } }, "→"),
+      h("button", { class: "icon danger", title: t("layer.delete"), "aria-label": t("layer.delete"), onclick: () => { if (confirm(t("layer.confirmDelete", { name: l.name }))) { layers.splice(S.layer, 1); markDirty(); render(); } } }, "✕")),
+    h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.desc") + " · " + LANGS[lang]),
+      h("input", { id: "layerDesc", value: pick(l.desc), oninput: e => { const v = assign(l.desc, e.target.value); if (v) l.desc = v; else delete l.desc; markDirty(); } })),
+    h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.main")),
       h("textarea", { id: "layerMain", class: "mono", rows: 2, oninput: e => {
         if (e.target.value) { l.screen = l.screen || {}; l.screen.main = e.target.value; }
         else if (l.screen) { delete l.screen.main; if (!Object.keys(l.screen).length) delete l.screen; }
@@ -602,7 +681,7 @@ function renderLayers() {
 }
 
 function renderLayersButtons() {
-  [...$("#layers").children].forEach((b, i) => { const l = prof().layers[i]; if (l) b.textContent = l.name || `레이어 ${i + 1}`; });
+  [...$("#layers").children].forEach((b, i) => { const l = prof().layers[i]; if (l) b.textContent = l.name || t("layer.n", { n: i + 1 }); });
 }
 
 function renderFace() {
@@ -617,7 +696,7 @@ function renderFace() {
       return h("div", { class: "slot", style: `background:${bg};color:${contrast(bg)}` }, kd ? previewText(kd.label) : "");
     }));
 
-  const screen = h("div", { class: "screen", "aria-label": "화면 미리보기" },
+  const screen = h("div", { class: "screen", "aria-label": t("face.screen") },
     slotRow(rows[0]),
     h("div", { class: "mainarea" }, previewText(screenDef.main || "")),
     h("div", { class: "bar", style: `background:${colorCss(screenDef.barColor) || "#202830"}` }, previewText(screenDef.bar || "")),
@@ -627,11 +706,11 @@ function renderFace() {
     ...row.map(k => {
       const { kd, inherited } = resolveKey(k);
       const ring = colorCss(kd?.led) || colorCss(kd?.color) || (kd ? "#8a8f96" : "#333");
-      const trig = TRIGGERS.filter(t => kd?.[t.id]?.length).map(t => h("span", {}, t.id[0].toUpperCase()));
+      const trig = TRIGGERS.filter(tr => kd?.[tr.id]?.length).map(tr => h("span", { title: t(tr.title) }, tr.id[0].toUpperCase()));
       return h("button", {
         class: "sw" + (inherited ? " inherit" : "") + (S.key === k ? " sel" : ""),
         style: `--ring:${ring};--glow:${kd ? ring : "transparent"}`,
-        "aria-label": `키 ${k}`,
+        "aria-label": t("side.key", { k }),
         onclick: () => { S.key = k; render(); },
       }, h("div", { class: "cap" }, k), h("div", { class: "trig" }, trig));
     }));
@@ -650,59 +729,60 @@ function renderEditor() {
   const ed = $("#editor");
   const layer = prof().layers[S.layer];
   if (!S.key || !layer) {
-    ed.replaceChildren(h("div", { class: "ed-head" }, h("h2", {}, "키 편집")),
-      h("p", { class: "empty" }, "가운데 기기 그림에서 스위치를 누르면 여기서 라벨, 색, 동작을 편집할 수 있어요."));
+    ed.replaceChildren(h("div", { class: "ed-head" }, h("h2", {}, t("ed.title"))),
+      h("p", { class: "empty" }, t("ed.empty")));
     return;
   }
   const key = S.key;
   const kd = layer.keys[key];
   const head = h("div", { class: "ed-head" },
-    h("h2", {}, `키 ${key} · ${layer.name}`),
-    kd ? h("button", { class: "ghost small danger", onclick: () => { delete layer.keys[key]; markDirty(); render(); } }, "이 레이어에서 삭제") : null);
+    h("h2", {}, t("ed.head", { k: key, layer: layer.name })),
+    kd ? h("button", { class: "ghost small danger", onclick: () => { delete layer.keys[key]; markDirty(); render(); } }, t("ed.removeHere")) : null);
 
   if (!kd) {
     const { from } = resolveKey(key);
     ed.replaceChildren(head,
-      h("p", { class: "empty" }, from ? `이 레이어에는 정의가 없어서 '${from}' 레이어 설정을 따라요.` : "어느 레이어에도 정의가 없는 키예요."),
-      h("button", { class: "primary", onclick: () => { layer.keys[key] = { label: key, color: "WHITE", short: [] }; markDirty(); render(); } }, "이 레이어에 키 정의 추가"));
+      h("p", { class: "empty" }, from ? t("ed.inherits", { from }) : t("ed.undefined")),
+      h("button", { class: "primary", onclick: () => { layer.keys[key] = { label: key, color: "WHITE", short: [] }; markDirty(); render(); } }, t("ed.addHere")));
     return;
   }
 
   const set = (attr, v) => { if (v === "" || v == null) delete kd[attr]; else kd[attr] = v; markDirty(); renderFace(); };
 
-  const palette = h("div", { class: "palette", role: "group", "aria-label": "색 팔레트" },
+  const palette = h("div", { class: "palette", role: "group", "aria-label": t("ed.palette") },
     ...Object.keys(COLORS).map(n => h("button", { title: n, "aria-label": n, style: `background:${colorCss(n)}`, onclick: () => { kd.color = n; markDirty(); render(); } })));
 
   const colorInput = h("input", { id: "kColor", class: "mono", value: typeof kd.color === "string" ? kd.color : JSON.stringify(kd.color ?? ""), oninput: e => { set("color", parseColor(e.target.value)); swatch.style.background = colorCss(kd.color) || "repeating-linear-gradient(45deg,#888 0 4px,#bbb 4px 8px)"; } });
-  const swatch = h("div", { class: "swatch", style: `background:${colorCss(kd.color) || "repeating-linear-gradient(45deg,#888 0 4px,#bbb 4px 8px)"}`, title: "식이면 줄무늬로 표시돼요" });
+  const swatch = h("div", { class: "swatch", style: `background:${colorCss(kd.color) || "repeating-linear-gradient(45deg,#888 0 4px,#bbb 4px 8px)"}`, title: t("ed.exprSwatch") });
 
   ed.replaceChildren(head,
-    h("label", { class: "field" }, h("span", {}, "라벨 템플릿 ({식} 자리에 값이 들어가요, 5자 이내 권장)"),
+    h("label", { class: "field" }, h("span", {}, t("ed.label")),
       h("input", { id: "kLabel", class: "mono", value: kd.label ?? "", oninput: e => set("label", e.target.value) })),
-    h("div", { class: "field" }, h("span", {}, "색 (이름, #rrggbb 또는 식)"),
+    h("div", { class: "field" }, h("span", {}, t("ed.color")),
       h("div", { class: "colorrow" }, colorInput, swatch), palette),
     h("div", { class: "grid2" },
-      h("label", { class: "field" }, h("span", {}, "LED (비우면 색과 같음)"),
+      h("label", { class: "field" }, h("span", {}, t("ed.led")),
         h("input", { id: "kLed", class: "mono", value: kd.led == null ? "" : (typeof kd.led === "string" ? kd.led : JSON.stringify(kd.led)), oninput: e => set("led", parseColor(e.target.value)) })),
-      h("label", { class: "field" }, h("span", {}, "밝기 (0-1)"),
+      h("label", { class: "field" }, h("span", {}, t("ed.bright")),
         h("input", { id: "kBright", class: "mono", value: kd.bright ?? "", placeholder: "0.3", oninput: e => set("bright", parseValue(e.target.value)) }))),
     ...TRIGGERS.map(t => renderTrigger(kd, t)));
 }
 
-function renderTrigger(kd, t) {
-  const ops = kd[t.id];
+function renderTrigger(kd, tr) {
+  const title = t(tr.title);
+  const ops = kd[tr.id];
   const list = h("div", { class: "stack" });
-  if (ops) ops.forEach((op, i) => list.append(renderOp(kd, t.id, ops, i)));
+  if (ops) ops.forEach((op, i) => list.append(renderOp(kd, tr.id, ops, i)));
 
   const presets = presetsFor(S.mode, prof().tag);
-  const picker = h("select", { "aria-label": `${t.title}에 프리셋 추가` },
-    h("option", { value: "" }, "프리셋에서 추가…"),
+  const picker = h("select", { "aria-label": t("ed.addPresetAria", { trigger: title }) },
+    h("option", { value: "" }, t("ed.addPreset")),
     ...presets.map((g, gi) => h("optgroup", { label: g.group }, ...g.items.map((it, ii) => h("option", { value: `${gi}:${ii}` }, it.name)))));
   picker.addEventListener("change", () => {
     if (!picker.value) return;
     const [gi, ii] = picker.value.split(":").map(Number);
     const it = presets[gi].items[ii];
-    (kd[t.id] = kd[t.id] || []).push(...structuredClone(it.ops));
+    (kd[tr.id] = kd[tr.id] || []).push(...structuredClone(it.ops));
     for (const [v, init] of Object.entries(it.needs || {})) {
       const st = prof().state || (prof().state = {});
       if (!(v in st)) st[v] = init;
@@ -710,21 +790,23 @@ function renderTrigger(kd, t) {
     markDirty(); render();
   });
 
-  const desc = h("input", { placeholder: "설명 (사용법 탭에 표시)", value: kd.desc?.[t.id] ?? "", "aria-label": `${t.title} 설명`,
+  // Descriptions are edited in the current UI language
+  const desc = h("input", { placeholder: t("ed.desc", { lang: LANGS[lang] }), value: pick(kd.desc?.[tr.id]), "aria-label": t("ed.descAria", { trigger: title }),
     oninput: e => {
       kd.desc = kd.desc || {};
-      if (e.target.value) kd.desc[t.id] = e.target.value; else delete kd.desc[t.id];
+      const v = assign(kd.desc[tr.id], e.target.value);
+      if (v) kd.desc[tr.id] = v; else delete kd.desc[tr.id];
       if (!Object.keys(kd.desc).length) delete kd.desc;
       markDirty();
     } });
 
   return h("section", { class: "trigger" },
-    h("h3", {}, t.title, t.hint ? h("small", {}, t.hint) : null),
+    h("h3", {}, title, tr.hint ? h("small", {}, t(tr.hint)) : null),
     ops ? desc : null,
-    ops?.length ? list : h("p", { class: "empty" }, "동작 없음"),
+    ops?.length ? list : h("p", { class: "empty" }, t("ed.noOps")),
     h("div", { class: "addrow" }, picker,
-      h("button", { class: "ghost", onclick: () => { (kd[t.id] = kd[t.id] || []).push({ cc: 0, val: 127 }); markDirty(); render(); } }, "+ 직접")),
-    ops && !ops.length ? h("button", { class: "ghost small", onclick: () => { delete kd[t.id]; markDirty(); render(); } }, `${t.title} 정의 제거`) : null);
+      h("button", { class: "ghost", onclick: () => { (kd[tr.id] = kd[tr.id] || []).push({ cc: 0, val: 127 }); markDirty(); render(); } }, t("ed.addManual"))),
+    ops && !ops.length ? h("button", { class: "ghost small", onclick: () => { delete kd[tr.id]; markDirty(); render(); } }, t("ed.removeTrigger", { trigger: title })) : null);
 }
 
 function renderOp(kd, trig, ops, i) {
@@ -732,30 +814,37 @@ function renderOp(kd, trig, ops, i) {
   const node = $("#tplOp").content.firstElementChild.cloneNode(true);
   const type = Object.keys(OPS).find(t => t in op) || "cc";
   const sel = node.querySelector(".op-type");
-  for (const [id, d] of Object.entries(OPS)) sel.append(h("option", { value: id, selected: id === type }, d.title));
+  sel.setAttribute("aria-label", t("ed.opType"));
+  for (const [id, d] of Object.entries(OPS)) sel.append(h("option", { value: id, selected: id === type }, t(d.title)));
   sel.addEventListener("change", () => {
     const def = OPS[sel.value];
-    ops[i] = { [def.fields[0][0]]: def.fields[0][2] === "" ? 0 : parseField(def.fields[0][0], def.fields[0][2]) };
+    const [attr, , example] = def.fields[0];
+    ops[i] = { [attr]: example === "" ? 0 : parseField(attr, example) };
     markDirty(); render();
   });
 
   const fields = node.querySelector(".op-fields");
-  for (const [attr, label, ph] of OPS[type].fields) {
+  for (const [attr, labelKey, example] of OPS[type].fields) {
+    const label = t(labelKey);
     const cur = op[attr];
     const value = cur == null ? "" : (attr === "raw" ? cur.join(", ") : JSON_FIELDS.has(attr) ? JSON.stringify(cur) : String(cur));
-    const input = h("input", { value, placeholder: ph, "aria-label": label });
+    const input = h("input", { value, placeholder: ph(example), "aria-label": label });
     input.addEventListener("change", () => {
       const v = input.value.trim();
       if (v === "") { delete op[attr]; }
       else {
         try { op[attr] = parseField(attr, v); input.setCustomValidity(""); }
-        catch { input.setCustomValidity("JSON 형식이 아니에요"); input.reportValidity(); return; }
+        catch { input.setCustomValidity(t("f.notJson")); input.reportValidity(); return; }
       }
       markDirty(); renderFace();
     });
     fields.append(h("label", {}, label, input));
   }
 
+  for (const [cls, key] of [["up", "ed.up"], ["down", "ed.down"], ["del", "ed.delete"]]) {
+    const b = node.querySelector("." + cls);
+    b.title = t(key); b.setAttribute("aria-label", t(key));
+  }
   node.querySelector(".up").disabled = i === 0;
   node.querySelector(".down").disabled = i === ops.length - 1;
   node.querySelector(".up").addEventListener("click", () => { move(ops, i, -1); markDirty(); render(); });
@@ -807,7 +896,7 @@ function bindSettings() {
   $("#setPower").addEventListener("change", e => { prof().power = e.target.checked; markDirty(); });
   const js = (id, attr) => $(id).addEventListener("change", e => {
     try { prof()[attr] = JSON.parse(e.target.value); $("#settingsErr").hidden = true; markDirty(); }
-    catch (err) { $("#settingsErr").hidden = false; $("#settingsErr").textContent = `${attr}: JSON 형식 오류 (${err.message})`; }
+    catch (err) { $("#settingsErr").hidden = false; $("#settingsErr").textContent = t("set.jsonError", { attr, e: err.message }); }
   });
   js("#setState", "state"); js("#setConsts", "consts"); js("#setVars", "vars");
   const scr = (id, attr) => $(id).addEventListener("input", e => {
@@ -845,7 +934,7 @@ function move(arr, i, d) {
 }
 
 function removeMode(n) {
-  if (!confirm(`'${n}' 모드를 목록에서 뺄까요? 장치의 JSON 파일은 지우지 않아요.`)) return;
+  if (!confirm(t("mode.confirmRemove", { n }))) return;
   S.modes.modes = S.modes.modes.filter(m => m !== n);
   if (S.modes.default === n) S.modes.default = S.modes.modes[0];
   for (const [k, v] of Object.entries(S.modes.bootSelect || {})) if (v === n) delete S.modes.bootSelect[k];
@@ -855,17 +944,17 @@ function removeMode(n) {
 
 function addMode() {
   const existing = Object.keys(S.profiles).filter(n => !S.modes.modes.includes(n));
-  const hint = existing.length ? ` (목록에 없는 프로필: ${existing.join(", ")})` : "";
-  const name = (prompt("새 모드의 파일 이름 (영문 소문자, 숫자, _)" + hint) || "").trim();
+  const hint = existing.length ? t("mode.unused", { list: existing.join(", ") }) : "";
+  const name = (prompt(t("mode.prompt", { hint })) || "").trim();
   if (!name) return;
-  if (!/^[a-z0-9_]+$/.test(name)) { notice("파일 이름은 영문 소문자, 숫자, _만 쓸 수 있어요.", "error"); return; }
-  if (S.modes.modes.includes(name)) { notice(`'${name}'은 이미 모드 목록에 있어요.`, "error"); return; }
+  if (!/^[a-z0-9_]+$/.test(name)) { notice(t("mode.badName"), "error"); return; }
+  if (S.modes.modes.includes(name)) { notice(t("mode.exists", { n: name }), "error"); return; }
   if (!S.profiles[name]) {
     S.profiles[name] = {
       schema: 1, name, tag: name.slice(0, 3).toUpperCase(), channel: 1, holdMs: 600, doubleMs: 500, power: false,
       state: {}, consts: {}, vars: [],
       screen: { bar: "{MODE}", barColor: "DARK_GRAY", main: name },
-      layers: [{ name: "기본", keys: {} }],
+      layers: [{ name: t("mode.baseLayer"), keys: {} }],
     };
   }
   S.modes.modes.push(name);
@@ -884,15 +973,15 @@ async function importProfile(file) {
   if (!file) return;
   try {
     const p = JSON.parse(await file.text());
-    if (!Array.isArray(p.layers)) throw new Error("layers가 없어요");
+    if (!Array.isArray(p.layers)) throw new Error(t("import.noLayers"));
     const name = file.name.replace(/\.json$/i, "").toLowerCase().replace(/[^a-z0-9_]/g, "_");
     S.profiles[name] = p;
     if (!S.modes.modes.includes(name)) S.modes.modes.push(name);
     S.mode = name; S.layer = 0; S.key = null;
-    notice(`'${name}' 프로필을 가져왔어요.`, "ok");
+    notice(t("import.done", { n: name }), "ok");
     markDirty(); render();
   } catch (e) {
-    notice("가져오지 못했어요: " + e.message, "error");
+    notice(t("import.failed", { e: e.message }), "error");
   }
 }
 
@@ -914,15 +1003,22 @@ function bind() {
   $("#btnApplyJson").addEventListener("click", () => {
     try {
       const p = JSON.parse($("#jsonText").value);
-      if (!Array.isArray(p.layers)) throw new Error("layers 배열이 필요해요");
+      if (!Array.isArray(p.layers)) throw new Error(t("json.needLayers"));
       S.profiles[S.mode] = p; markDirty();
-      $("#jsonErr").textContent = "적용했어요";
+      $("#jsonErr").textContent = t("json.applied");
     } catch (e) { $("#jsonErr").textContent = e.message; }
   });
   bindSettings();
+
+  const langSel = $("#lang");
+  langSel.replaceChildren(...Object.entries(LANGS).map(([id, name]) => h("option", { value: id, selected: id === lang }, name)));
+  langSel.addEventListener("change", () => { setLang(langSel.value); applyStatic(); render(); });
+
   window.addEventListener("beforeunload", e => { if (S.dirty && S.dir) { e.preventDefault(); e.returnValue = ""; } });
 }
 
+setLang(lang);
+applyStatic();
 bind();
 // Deep link to a view: #usage, #keys, #settings, #json
 const hashView = location.hash.slice(1);
@@ -932,6 +1028,6 @@ if (hashView === "keys") S.key = "3";
 loadDefaults()
   .then(() => {
     render();
-    if (!("showDirectoryPicker" in window)) notice("편집은 되지만, 장치에 저장하려면 데스크톱 Chrome이나 Edge가 필요해요.");
+    if (!("showDirectoryPicker" in window)) notice(t("conn.editOnly"));
   })
-  .catch(e => notice("기본 프로필을 불러오지 못했어요: " + e.message, "error"));
+  .catch(e => notice(t("load.defaultsFailed", { e: e.message }), "error"));

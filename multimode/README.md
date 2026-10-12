@@ -52,6 +52,8 @@ multimode/tests/         프로필 동작 테스트
 
 로컬에서 띄우기: `python3 multimode/tools/mmtool.py serve` → http://localhost:8765
 
+언어: English, 简体中文, 日本語, 한국어. 브라우저 언어를 따르고, 상단에서 바꾸거나 `?lang=ja`처럼 링크로 지정할 수 있습니다 (문구는 `web/i18n.js`, 프리셋 이름은 `web/presets.js`).
+
 ## 명령줄 도구
 
 ```
@@ -86,6 +88,7 @@ python3 -m unittest discover -s multimode/tests
 - 값은 숫자 그대로이거나 **파이썬 식** 문자열입니다. 라벨은 `{식}` 템플릿입니다.
 - 동작: `cc`/`val`, `pc`, `note`/`vel`, `raw`, `set`/`to`, `toggle`, `inc`/`by`/`mod`/`lo`/`min`/`max`, `if`/`then`/`else`, `mode` (`next`, `prev`, 이름). 모든 MIDI 동작에 `ch`(1-16)로 채널 지정 가능.
 - 색: 이름(`BLUE` 등 PySwitch 색), `#rrggbb`, `[r,g,b]`, 또는 그런 값을 내는 식. `led`에 3개 목록을 주면 LED 3칸을 각각 칠합니다.
+- `desc`(설명)는 문자열 또는 `{ "en": …, "zh": …, "ja": …, "ko": … }`. 에디터 전용이라 장치에는 `profiles/<이름>.desc.json`으로 따로 저장되고, 펌웨어는 읽지 않습니다.
 - `double`을 정의한 키는 짧게 누르기가 `doubleMs`만큼 늦게 실행됩니다. 대기 중에는 `_pend`가 그 키 이름입니다.
 - 식은 부팅할 때 한꺼번에 함수로 컴파일됩니다 (CircuitPython 7에는 `compile()`이 없고, `eval()`은 매번 ~15ms 걸림). 실측: 프로필 로드 185ms, 전체 화면 갱신 24ms, RAM 15KB.
 

@@ -124,8 +124,18 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 A, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
-            "long": "풋스위치 A, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            "short": {
+              "en": "Footswitch A on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 A，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ A、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 A, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch A on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 A，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ A、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 A, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
           }
         },
         "2": {
@@ -142,8 +152,18 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 B, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
-            "long": "풋스위치 B, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            "short": {
+              "en": "Footswitch B on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 B，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ B、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 B, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch B on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 B，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ B、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 B, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
           }
         },
         "A": {
@@ -160,8 +180,18 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 C, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
-            "long": "풋스위치 C, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            "short": {
+              "en": "Footswitch C on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 C，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ C、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 C, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch C on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 C，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ C、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 C, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
           }
         },
         "B": {
@@ -178,12 +208,27 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 D, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)",
-            "long": "풋스위치 D, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            "short": {
+              "en": "Footswitch D on the current QC page (opposite page when flipped with a double click on 3)",
+              "zh": "脚踏开关 D，当前 QC 页（双击 3 号键翻转后为另一页）",
+              "ja": "フットスイッチ D、現在の QC ページ（3 をダブルクリックで反転すると反対のページ）",
+              "ko": "풋스위치 D, 현재 QC 페이지 (3번 더블클릭으로 뒤집으면 반대 페이지)"
+            },
+            "long": {
+              "en": "Footswitch D on the opposite QC page (current page when flipped)",
+              "zh": "脚踏开关 D，另一 QC 页（翻转后为当前页）",
+              "ja": "フットスイッチ D、反対の QC ページ（反転すると現在のページ）",
+              "ko": "풋스위치 D, 반대 QC 페이지 (뒤집으면 현재 페이지)"
+            }
           }
         }
       },
-      "desc": "QC 화면이 Gig View일 때. 1·2·A·B가 QC 풋스위치 A·B·C·D를 그대로 대신해요."
+      "desc": {
+        "en": "When the QC shows Gig View: 1, 2, A and B act as QC footswitches A, B, C and D.",
+        "zh": "QC 显示 Gig View 时：1、2、A、B 直接代替 QC 的脚踏开关 A、B、C、D。",
+        "ja": "QC が Gig View のとき：1・2・A・B が QC のフットスイッチ A・B・C・D の代わりになります。",
+        "ko": "QC 화면이 Gig View일 때. 1·2·A·B가 QC 풋스위치 A·B·C·D를 그대로 대신해요."
+      }
     },
     {
       "name": "Chain",
@@ -211,8 +256,18 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 A (내부 페이지 MP 기준)",
-            "long": "튜너 켜기/끄기 (CC45)"
+            "short": {
+              "en": "Footswitch A (internal page MP)",
+              "zh": "脚踏开关 A（按内部页 MP）",
+              "ja": "フットスイッチ A（内部ページ MP 基準）",
+              "ko": "풋스위치 A (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Tuner on/off (CC45)",
+              "zh": "打开/关闭调音器（CC45）",
+              "ja": "チューナーのオン/オフ（CC45）",
+              "ko": "튜너 켜기/끄기 (CC45)"
+            }
           }
         },
         "2": {
@@ -230,8 +285,18 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 B (내부 페이지 MP 기준)",
-            "long": "내부 페이지 MP 1↔2 전환. QC에는 아무것도 보내지 않아요"
+            "short": {
+              "en": "Footswitch B (internal page MP)",
+              "zh": "脚踏开关 B（按内部页 MP）",
+              "ja": "フットスイッチ B（内部ページ MP 基準）",
+              "ko": "풋스위치 B (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Switch the internal page MP 1↔2. Sends nothing to the QC",
+              "zh": "切换内部页 MP 1↔2，不向 QC 发送任何消息",
+              "ja": "内部ページ MP を 1↔2 で切り替え。QC には何も送りません",
+              "ko": "내부 페이지 MP 1↔2 전환. QC에는 아무것도 보내지 않아요"
+            }
           }
         },
         "A": {
@@ -258,8 +323,18 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 C (내부 페이지 MP 기준)",
-            "long": "씬 −1 (CC43, H→A로 순환)"
+            "short": {
+              "en": "Footswitch C (internal page MP)",
+              "zh": "脚踏开关 C（按内部页 MP）",
+              "ja": "フットスイッチ C（内部ページ MP 基準）",
+              "ko": "풋스위치 C (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Scene −1 (CC43, wraps from A to H)",
+              "zh": "场景 −1（CC43，从 A 循环到 H）",
+              "ja": "シーン −1（CC43、A から H へ循環）",
+              "ko": "씬 −1 (CC43, A에서 H로 순환)"
+            }
           }
         },
         "B": {
@@ -286,12 +361,27 @@
             }
           ],
           "desc": {
-            "short": "풋스위치 D (내부 페이지 MP 기준)",
-            "long": "씬 +1 (CC43, A→H로 순환)"
+            "short": {
+              "en": "Footswitch D (internal page MP)",
+              "zh": "脚踏开关 D（按内部页 MP）",
+              "ja": "フットスイッチ D（内部ページ MP 基準）",
+              "ko": "풋스위치 D (내부 페이지 MP 기준)"
+            },
+            "long": {
+              "en": "Scene +1 (CC43, wraps from H to A)",
+              "zh": "场景 +1（CC43，从 H 循环到 A）",
+              "ja": "シーン +1（CC43、H から A へ循環）",
+              "ko": "씬 +1 (CC43, H에서 A로 순환)"
+            }
           }
         }
       },
-      "desc": "평소 모드. 1·2·A·B가 내부 페이지(MP) 기준으로 QC 풋스위치 A~D를 보내요."
+      "desc": {
+        "en": "Normal mode: 1, 2, A and B send QC footswitches A to D on the internal page (MP).",
+        "zh": "普通模式：1、2、A、B 按内部页（MP）发送 QC 脚踏开关 A～D。",
+        "ja": "通常モード：1・2・A・B が内部ページ（MP）基準で QC のフットスイッチ A〜D を送ります。",
+        "ko": "평소 모드. 1·2·A·B가 내부 페이지(MP) 기준으로 QC 풋스위치 A~D를 보내요."
+      }
     },
     {
       "name": "Global",
@@ -327,9 +417,24 @@
             }
           ],
           "desc": {
-            "short": "QC 모드 순환 PRE→SCN→STP (CC47). 더블클릭 대기 때문에 0.7초 뒤 실행",
-            "double": "Gig View에서 짧게/길게 누르기의 현재·반대 페이지를 서로 뒤집기 (라벨 끝 C↔O)",
-            "long": "QC 풋스위치 페이지 I↔II 전환 (CC64). LED 왼쪽=I, 오른쪽=II"
+            "short": {
+              "en": "Cycle the QC mode PRE→SCN→STP (CC47). Runs after 0.7 s because it waits for a double click",
+              "zh": "循环切换 QC 模式 PRE→SCN→STP（CC47）。因等待双击，0.7 秒后执行",
+              "ja": "QC のモードを PRE→SCN→STP の順に切り替え（CC47）。ダブルクリックを待つため 0.7 秒後に実行",
+              "ko": "QC 모드 순환 PRE→SCN→STP (CC47). 더블클릭을 기다려서 0.7초 뒤 실행"
+            },
+            "double": {
+              "en": "In Gig View, swap which page short and long presses send (label ends in C↔O)",
+              "zh": "在 Gig View 中，互换短按和长按对应的当前页/另一页（标签末尾 C↔O）",
+              "ja": "Gig View で、短押しと長押しが送る現在/反対ページを入れ替え（ラベル末尾 C↔O）",
+              "ko": "Gig View에서 짧게/길게 누르기의 현재·반대 페이지를 서로 뒤집기 (라벨 끝 C↔O)"
+            },
+            "long": {
+              "en": "Switch the QC footswitch page I↔II (CC64). LED left = I, right = II",
+              "zh": "切换 QC 脚踏开关页 I↔II（CC64）。LED 左侧 = I，右侧 = II",
+              "ja": "QC のフットスイッチページを I↔II で切り替え（CC64）。LED 左 = I、右 = II",
+              "ko": "QC 풋스위치 페이지 I↔II 전환 (CC64). LED 왼쪽=I, 오른쪽=II"
+            }
           }
         },
         "C": {
@@ -351,8 +456,18 @@
             }
           ],
           "desc": {
-            "short": "탭 템포 (CC44)",
-            "long": "Gig View 켜기/끄기 (CC46)"
+            "short": {
+              "en": "Tap tempo (CC44)",
+              "zh": "Tap 速度（CC44）",
+              "ja": "タップテンポ（CC44）",
+              "ko": "탭 템포 (CC44)"
+            },
+            "long": {
+              "en": "Gig View on/off (CC46)",
+              "zh": "打开/关闭 Gig View（CC46）",
+              "ja": "Gig View のオン/オフ（CC46）",
+              "ko": "Gig View 켜기/끄기 (CC46)"
+            }
           }
         },
         "4": {
@@ -368,7 +483,12 @@
             }
           ],
           "desc": {
-            "short": "튜너 켜기/끄기 (MIDI Captain 10)"
+            "short": {
+              "en": "Tuner on/off (MIDI Captain 10)",
+              "zh": "打开/关闭调音器（MIDI Captain 10）",
+              "ja": "チューナーのオン/オフ（MIDI Captain 10）",
+              "ko": "튜너 켜기/끄기 (MIDI Captain 10)"
+            }
           }
         },
         "D": {
@@ -381,7 +501,12 @@
             }
           ],
           "desc": {
-            "short": "내부 페이지 MP 1↔2 (MIDI Captain 10)"
+            "short": {
+              "en": "Internal page MP 1↔2 (MIDI Captain 10)",
+              "zh": "内部页 MP 1↔2（MIDI Captain 10）",
+              "ja": "内部ページ MP 1↔2（MIDI Captain 10）",
+              "ko": "내부 페이지 MP 1↔2 (MIDI Captain 10)"
+            }
           }
         },
         "Up": {
@@ -403,7 +528,12 @@
             }
           ],
           "desc": {
-            "short": "씬 +1 (MIDI Captain 10)"
+            "short": {
+              "en": "Scene +1 (MIDI Captain 10)",
+              "zh": "场景 +1（MIDI Captain 10）",
+              "ja": "シーン +1（MIDI Captain 10）",
+              "ko": "씬 +1 (MIDI Captain 10)"
+            }
           }
         },
         "Down": {
@@ -425,12 +555,27 @@
             }
           ],
           "desc": {
-            "short": "씬 −1 (MIDI Captain 10)"
+            "short": {
+              "en": "Scene −1 (MIDI Captain 10)",
+              "zh": "场景 −1（MIDI Captain 10）",
+              "ja": "シーン −1（MIDI Captain 10）",
+              "ko": "씬 −1 (MIDI Captain 10)"
+            }
           }
         }
       },
-      "desc": "모든 모드에서 같은 동작을 하는 키."
+      "desc": {
+        "en": "Keys that do the same in every mode.",
+        "zh": "在所有模式下动作相同的键。",
+        "ja": "どのモードでも同じ動作をするキー。",
+        "ko": "모든 모드에서 같은 동작을 하는 키."
+      }
     }
   ],
-  "desc": "Quad Cortex mini 제어. 평소엔 Chain 모드, C를 길게 누르면 Gig View 모드."
+  "desc": {
+    "en": "Controls the Quad Cortex mini. Chain mode normally, hold C for Gig View mode.",
+    "zh": "控制 Quad Cortex mini。平时为 Chain 模式，长按 C 进入 Gig View 模式。",
+    "ja": "Quad Cortex mini を操作します。通常は Chain モード、C を長押しで Gig View モード。",
+    "ko": "Quad Cortex mini 제어. 평소엔 Chain 모드, C를 길게 누르면 Gig View 모드."
+  }
 }

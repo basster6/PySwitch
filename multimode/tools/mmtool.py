@@ -112,6 +112,8 @@ def build(out, device = None):
                 continue
             shutil.copy2(os.path.join(root, f), os.path.join(out, rel, f))
 
+    split_descriptions(os.path.join(out, "profiles"))
+
     with open(os.path.join(out, "lib", "multimode", "VERSION"), "w") as f:
         f.write(version() + "\n")
 
@@ -164,7 +166,7 @@ def build_site(out):
         json.dump({"version": ver, "files": files}, f, indent = 1)
 
     with open(os.path.join(out, "profiles", "index.json"), "w") as f:
-        json.dump(sorted(n[:-5] for n in os.listdir(os.path.join(out, "profiles")) if n.endswith(".json") and n not in ("modes.json", "index.json")), f)
+        json.dump(sorted(n[:-5] for n in os.listdir(os.path.join(out, "profiles")) if n.endswith(".json") and not n.endswith(".desc.json") and n not in ("modes.json", "index.json")), f)
 
     return out
 
@@ -188,6 +190,36 @@ def cmd_serve(args):
     except KeyboardInterrupt:
         pass
     return 0
+
+
+# Moves the descriptions (only used by the editor) from each profile into <name>.desc.json, so the firmware
+# does not parse them. Same format as splitDesc() in web/app.js.
+def split_descriptions(profiles_dir):
+    for name in os.listdir(profiles_dir):
+        if not name.endswith(".json") or name == "modes.json" or name.endswith(".desc.json"):
+            continue
+        path = os.path.join(profiles_dir, name)
+        with open(path) as f:
+            profile = json.load(f)
+
+        desc = {"layers": []}
+        if "desc" in profile:
+            desc["profile"] = profile.pop("desc")
+        for layer in profile.get("layers", []):
+            d = {}
+            if "desc" in layer:
+                d["desc"] = layer.pop("desc")
+            for key, kd in layer.get("keys", {}).items():
+                if "desc" in kd:
+                    d.setdefault("keys", {})[key] = kd.pop("desc")
+            desc["layers"].append(d)
+
+        with open(path, "w") as f:
+            json.dump(profile, f, indent = 2, ensure_ascii = False)
+            f.write("\n")
+        with open(path[:-5] + ".desc.json", "w") as f:
+            json.dump(desc, f, indent = 1, ensure_ascii = False)
+            f.write("\n")
 
 
 def cmd_build(args):
