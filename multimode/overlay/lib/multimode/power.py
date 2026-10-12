@@ -6,11 +6,12 @@
 ##############################################################################################################################################
 
 from time import monotonic
+from pyswitch.misc import Updateable
 
 _POLL_INTERVAL_MS = 5000
 
 
-class PowerSense:
+class PowerSense(Updateable):
     def __init__(self, engine):
         self._engine = engine
         self._next_poll_ms = 0

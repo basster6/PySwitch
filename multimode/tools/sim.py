@@ -47,6 +47,7 @@ from multimode import engine as _engine      # noqa: E402
 from multimode import store as _store        # noqa: E402
 from multimode.devices import DEVICES        # noqa: E402
 from pyswitch.controller.inputs import SwitchController   # noqa: E402
+from pyswitch.misc import Updater                         # noqa: E402
 
 
 class FakeLabel:
@@ -96,15 +97,13 @@ class FakeLedDriver:
         self.leds = [color] * 30
 
 
-class FakeAppl:
+# Uses PySwitch's real Updater, which ignores objects that are not Updateables
+class FakeAppl(Updater):
     def __init__(self):
+        Updater.__init__(self)
         self.client = FakeClient()
         self.led_driver = FakeLedDriver()
-        self.updateables = []
         self.shared = {}
-
-    def add_updateable(self, u):
-        self.updateables.append(u)
 
 
 class Sim:

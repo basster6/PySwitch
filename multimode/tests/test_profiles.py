@@ -29,6 +29,13 @@ class TestQuadCortex(unittest.TestCase):
         self.assertEqual(s.main.text, "CH\nPRE MP2 QP2")
         self.assertEqual(s.sent, [])
 
+    def test_screen_rendered_without_key_press(self):
+        # Regression: the engine must be registered as PySwitch Updateable to render the screen after boot
+        s = sim.Sim("qc")
+        self.assertIn(s.engine, s.appl.updateables)
+        self.assertEqual(s.main.text, "CH\nPRE MP2 QP2")
+        self.assertTrue(s.bar.text.startswith("PW: "))
+
     def test_chain_slots_follow_midi_page(self):
         s = self.s
         s.short("1")

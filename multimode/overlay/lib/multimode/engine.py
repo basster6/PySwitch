@@ -16,6 +16,7 @@ from adafruit_midi.midi_message import MIDIMessage
 
 from pyswitch.controller.actions import Action
 from pyswitch.colors import Colors
+from pyswitch.misc import Updateable
 
 from . import store
 
@@ -65,7 +66,8 @@ def parse_template(template):
     return parts
 
 
-class Engine:
+# Must be an Updateable: PySwitch's add_updateable() silently ignores everything else
+class Engine(Updateable):
 
     # switches: List of PySwitch switch assignments. Keys are addressed by the assignment's "name" ("1", "A", "Up"...)
     # labels:   Dict of DisplayLabels, by key name (keys without label are allowed)
