@@ -99,10 +99,10 @@ class Engine(Updateable):
         self.modes = modes["modes"]
 
         if mode is None:
-            index = store.load_index()
-            if index is None or index >= len(self.modes):
-                index = self.modes.index(modes.get("default", self.modes[0]))
-            mode = self.modes[index]
+            mode = store.load_mode(self.modes)
+            if mode is None:
+                default = modes.get("default", self.modes[0])
+                mode = default if default in self.modes else self.modes[0]
 
         self.mode = mode
         self.profile = load_json(root + "/" + mode + ".json")
@@ -495,7 +495,7 @@ class Engine(Updateable):
         else:
             index = self.modes.index(target)
 
-        store.save_index(index)
+        store.save_mode(self.modes[index])
 
         if self.ui.get("message", None):
             self.ui["message"].text = "> " + self.modes[index]

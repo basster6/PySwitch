@@ -47,7 +47,7 @@ def _select():
             break
 
     if selected:
-        store.save_index(config["modes"].index(selected))
+        store.save_mode(selected)
 
         # Wait for the switch to be released, so PySwitch does not see a key press (max. 3 seconds)
         start = monotonic()

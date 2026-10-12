@@ -26,6 +26,10 @@
   </div>
 </header>
 
+<div class="notice preview" id="preview">
+  <span><b data-i18n="preview.title">Preview</b> · <span data-i18n="preview.text">You are editing the bundled example profiles in this browser.</span></span>
+  <button id="btnPreviewConnect" class="ghost small" data-i18n="conn.connect">Connect device drive</button>
+</div>
 <div class="notice" id="notice" hidden></div>
 
 <main class="layout">
@@ -133,8 +137,11 @@
 </main>
 
 <footer class="foot">
-  <span data-i18n="app.footer">Based on PySwitch (GPLv3, Thomas Weber).</span>
-  <span id="fwVersion"></span>
+  <p class="legal" data-i18n="app.footer">Based on PySwitch (GPLv3, Thomas Weber).</p>
+  <div class="meta">
+    <a href="https://github.com/basster6/PySwitch/tree/qc-local-mods/multimode" target="_blank" rel="noopener" data-i18n="app.source">Source on GitHub</a>
+    <code id="fwVersion"></code>
+  </div>
 </footer>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

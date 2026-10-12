@@ -80,6 +80,9 @@ input, select, textarea {
 textarea { resize: vertical; }
 textarea.json { min-height: 60vh; white-space: pre; }
 
+/* Page width: the workbench stays readable on wide screens; header, notice, content and footer share it */
+.top, .notice, .layout, .foot { width: 100%; max-width: 1440px; margin-inline: auto; }
+
 .top {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3);
   padding-block: var(--s4);
@@ -101,6 +104,7 @@ textarea.json { min-height: 60vh; white-space: pre; }
   border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--panel);
   padding: var(--s3) var(--s4); border-radius: var(--r); margin-bottom: var(--s4);
 }
+.notice.preview { border-left-color: var(--metal-2); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); align-items: center; justify-content: space-between; }
 .notice.error { border-left-color: var(--danger); }
 .notice.ok { border-left-color: var(--ok); }
 
@@ -160,7 +164,7 @@ textarea.json { min-height: 60vh; white-space: pre; }
 .layers { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
 .layers button { min-height: 30px; }
 .layers button.sel { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
-.layer-meta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: var(--s2); margin-top: var(--s3); align-items: end; }
+.layer-meta { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 420px) auto; justify-content: start; gap: var(--s2) var(--s3); margin-top: var(--s3); align-items: end; }
 @media (max-width: 560px) { .layer-meta { grid-template-columns: minmax(0, 1fr); } }
 
 /* Device face */
@@ -168,12 +172,12 @@ textarea.json { min-height: 60vh; white-space: pre; }
   margin-block: var(--s4); padding: var(--s5) var(--s4);
   border-radius: 14px;
   background: linear-gradient(180deg, var(--metal), var(--metal-2));
-  display: grid; gap: var(--s5);
+  display: grid; gap: var(--s5); justify-items: center;
   overflow-x: auto;
 }
 /* Screen preview: elements are positioned in % of the 240x240 display (layout.json), font sizes in container units */
 .face .screen {
-  justify-self: center; width: min(300px, 100%); aspect-ratio: 1; max-width: 100%;
+  justify-self: center; width: min(320px, 100%); aspect-ratio: 1; max-width: 100%;
   position: relative; background: #000; border-radius: 4px; overflow: hidden;
   container-type: inline-size; box-shadow: 0 0 0 3px #000;
 }
@@ -187,7 +191,8 @@ textarea.json { min-height: 60vh; white-space: pre; }
 .screen .f-label { font: 700 calc(100cqw * 18 / 240) Arial, Helvetica, sans-serif; }
 .screen .f-large { font: 700 calc(100cqw * 44 / 240) "PT Sans Narrow", "Arial Narrow", sans-serif; }
 .usage .khint { display: block; font: 500 11px var(--f-mono); color: var(--muted); margin-top: 2px; }
-.face .row { display: grid; gap: var(--s4); justify-items: center; }
+/* Switch rows are about as wide as on the device, around the screen */
+.face .row { display: grid; gap: var(--s4); justify-items: center; width: min(100%, 560px); }
 .sw {
   width: 100%; max-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 6px;
   background: transparent; border: 0; padding: 0; min-height: 0;
@@ -277,6 +282,15 @@ a { color: var(--accent); }
 .addrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2); }
 .empty { color: var(--muted); font-size: 12.5px; border: 1px dashed var(--line); border-radius: var(--r); padding: var(--s3); text-align: center; }
 
-.foot { display: flex; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; color: var(--muted); font-size: 12px; padding-block: var(--s5) 0; }
+.foot {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2) var(--s5); flex-wrap: wrap;
+  margin-top: var(--s5); padding-block: var(--s4); border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12.5px;
+}
+.foot .legal { max-width: 80ch; min-width: 0; }
+.foot .meta { display: flex; gap: var(--s3); align-items: baseline; flex-wrap: wrap; }
+.foot .meta code { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); }
+.editor { position: sticky; top: calc(var(--s4) + env(safe-area-inset-top, 0px)); }
+@media (max-width: 1180px) { .editor { position: static; } }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

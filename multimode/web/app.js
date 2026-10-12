@@ -222,6 +222,8 @@ async function connect() {
     notice(t("conn.unsupported"), "error");
     return;
   }
+  if (!S.dir && S.dirty && !confirm(t("preview.discard"))) return;
+
   let dir;
   try { dir = await window.showDirectoryPicker({ id: "midicaptain", mode: "readwrite" }); }
   catch { return; }
@@ -246,10 +248,20 @@ async function connect() {
     try {
       const modes = JSON.parse(modesText);
       const profiles = {};
-      for (const n of modes.modes) {
+      // All profiles on the device, also the ones removed from the mode list: adding them again restores
+      // the device's version instead of a default one
+      const names = new Set(modes.modes);
+      try {
+        for await (const [name, handle] of (await dir.getDirectoryHandle("profiles")).entries()) {
+          if (handle.kind === "file" && name.endsWith(".json") && !name.endsWith(".desc.json") && name !== "modes.json" && !name.startsWith("._")) names.add(name.slice(0, -5));
+        }
+      } catch { /* no profiles folder */ }
+      for (const n of names) {
         const text = await readText(dir, `profiles/${n}.json`);
         const desc = await readText(dir, `profiles/${n}.desc.json`);
-        if (text) profiles[n] = mergeDesc(JSON.parse(text), desc ? JSON.parse(desc) : null);
+        try {
+          if (text) profiles[n] = mergeDesc(JSON.parse(text), desc ? JSON.parse(desc) : null);
+        } catch { /* skip files which are not profiles */ }
       }
       S.modes = modes;
       Object.assign(S.profiles, profiles);
@@ -674,12 +686,22 @@ function renderSide() {
         h("button", { class: "icon danger", title: t("side.removeMode"), "aria-label": t("side.removeMode"), disabled: S.modes.modes.length < 2, onclick: e => { e.stopPropagation(); removeMode(n); } }, "✕")));
   }));
 
+  // Without a device, the page shows the bundled profiles: the mode list (what the device boots) can only be changed
+  // with a device connected
+  const locked = !S.dir;
+  for (const b of $("#modeList").querySelectorAll("button")) {
+    if (locked) { b.disabled = true; b.title = t("preview.needDevice"); }
+  }
+  $("#btnAddMode").disabled = locked;
+  $("#btnAddMode").title = locked ? t("preview.needDevice") : "";
+  $("#preview").hidden = !!S.dir;
+
   const keys = deviceKeys().filter(k => k !== "1");
   const bs = S.modes.bootSelect || (S.modes.bootSelect = {});
   $("#bootSelect").replaceChildren(h("span", { class: "hint", style: "grid-column:1/-1" }, t("side.bootKeys")),
     ...keys.flatMap(k => [
       h("span", {}, t("side.key", { k })),
-      h("select", { onchange: e => { if (e.target.value) bs[k] = e.target.value; else delete bs[k]; markDirty(); } },
+      h("select", { disabled: locked, title: locked ? t("preview.needDevice") : null, onchange: e => { if (e.target.value) bs[k] = e.target.value; else delete bs[k]; markDirty(); } },
         h("option", { value: "" }, "—"),
         ...S.modes.modes.map(n => h("option", { value: n, selected: bs[k] === n }, n))),
     ]));
@@ -727,7 +749,7 @@ function renderLayers() {
     h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.desc") + " · " + LANGS[lang]),
       h("input", { id: "layerDesc", value: pick(l.desc), oninput: e => { const v = assign(l.desc, e.target.value); if (v) l.desc = v; else delete l.desc; markDirty(); } })),
     h("label", { class: "field", style: "grid-column:1/-1" }, h("span", {}, t("layer.screen")),
-      h("textarea", { id: "layerScreen", class: "mono", rows: 3, placeholder: '{ "statusColor": "RED", "tiles": [{ "color": "RED" }] }', onchange: e => {
+      h("textarea", { id: "layerScreen", class: "mono", rows: 5, placeholder: '{ "statusColor": "RED", "tiles": [{ "color": "RED" }] }', onchange: e => {
         const v = e.target.value.trim();
         try {
           if (v) l.screen = JSON.parse(v); else delete l.screen;
@@ -1095,6 +1117,7 @@ async function importProfile(file) {
 
 function bind() {
   $("#btnConnect").addEventListener("click", connect);
+  $("#btnPreviewConnect").addEventListener("click", connect);
   $("#btnSave").addEventListener("click", save);
   $("#btnFirmware").addEventListener("click", () => installFirmware());
   $("#btnAddMode").addEventListener("click", addMode);

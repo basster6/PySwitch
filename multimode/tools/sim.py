@@ -112,10 +112,10 @@ class Sim:
         self.now = 0
         _engine._ms = lambda: self.now
 
-        self.saved_index = None
+        self.saved_mode = None
         self.reloaded = False
-        _store.save_index = self._save_index
-        _store.load_index = lambda: None
+        _store.save_mode = self._save_mode
+        _store.load_mode = lambda modes: None
         _store.reload = self._reload
 
         if modes is None:
@@ -159,8 +159,8 @@ class Sim:
 
         self.tick()
 
-    def _save_index(self, index):
-        self.saved_index = index
+    def _save_mode(self, name):
+        self.saved_mode = name
 
     def _reload(self):
         self.reloaded = True

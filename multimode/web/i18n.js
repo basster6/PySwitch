@@ -74,6 +74,7 @@ const D = {
     ja: "PySwitch（GPLv3、Thomas Weber）ベース · multimode 拡張 · Quad Cortex、Anagram、MIDI Captain は各所有者の商標であり、本ツールはメーカーとは無関係です。",
     ko: "PySwitch (GPLv3, Thomas Weber) 기반 · multimode 확장 · Quad Cortex, Anagram, MIDI Captain은 각 소유자의 상표이며 이 도구는 제조사와 무관합니다.",
   },
+  "app.source": { en: "Source on GitHub", zh: "GitHub 源代码", ja: "GitHub のソースコード", ko: "GitHub 소스 코드" },
   "app.firmware": { en: "Firmware {v}", zh: "固件 {v}", ja: "ファームウェア {v}", ko: "펌웨어 {v}" },
 
   // Connection
@@ -107,6 +108,20 @@ const D = {
   },
   "load.defaultsFailed": { en: "Could not load the default profiles: {e}", zh: "无法加载默认配置：{e}", ja: "既定のプロファイルを読み込めませんでした：{e}", ko: "기본 프로필을 불러오지 못했어요: {e}" },
 
+  "preview.title": { en: "Preview", zh: "预览", ja: "プレビュー", ko: "미리보기" },
+  "preview.text": {
+    en: "No device connected: you are looking at the bundled example profiles. Changes stay in this browser; connect the device drive to load and save its own settings.",
+    zh: "未连接设备：当前显示的是内置示例配置。更改只保存在此浏览器中；连接设备磁盘后即可读取和保存设备上的设置。",
+    ja: "デバイス未接続：内蔵のサンプルプロファイルを表示しています。変更はこのブラウザ内だけです。デバイスのドライブを接続すると、デバイスの設定を読み込んで保存できます。",
+    ko: "장치 미연결: 내장 예시 프로필을 보고 있어요. 바꾼 내용은 이 브라우저 안에서만 유지돼요. 장치 드라이브를 연결하면 장치의 설정을 불러와 저장할 수 있어요.",
+  },
+  "preview.needDevice": { en: "Connect the device to change the mode list", zh: "连接设备后才能修改模式列表", ja: "モード一覧を変えるにはデバイスを接続してください", ko: "모드 목록은 장치를 연결해야 바꿀 수 있어요" },
+  "preview.discard": {
+    en: "Discard the changes made in the preview and load the device's settings?",
+    zh: "放弃在预览中所做的更改，并读取设备上的设置？",
+    ja: "プレビューでの変更を破棄して、デバイスの設定を読み込みますか？",
+    ko: "미리보기에서 바꾼 내용은 버리고 장치 설정을 불러올까요?",
+  },
   // Side panel
   "side.device": { en: "Device", zh: "设备", ja: "デバイス", ko: "기기" },
   "side.model": { en: "Model", zh: "型号", ja: "モデル", ko: "모델" },

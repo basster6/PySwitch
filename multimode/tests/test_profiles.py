@@ -180,8 +180,34 @@ class TestAnagram(unittest.TestCase):
     def test_double_click_switches_profile(self):
         s = self.s
         s.double("C")
-        self.assertEqual(s.saved_index, 0)       # next after "anagram" wraps to "qc"
+        self.assertEqual(s.saved_mode, "qc")     # next after "anagram" wraps to "qc"
         self.assertTrue(s.reloaded)
+
+
+class TestStore(unittest.TestCase):
+
+    # The mode is stored by name: removing or reordering modes must not change which one starts
+    def test_mode_by_name(self):
+        import types
+        from importlib import reload
+        mc = types.ModuleType("microcontroller")
+        mc.nvm = bytearray(64)
+        sys.modules["microcontroller"] = mc
+        try:
+            from multimode import store
+            store = reload(store)       # the simulator replaces load_mode / save_mode
+
+            store.save_mode("anagram")
+            self.assertEqual(store.load_mode(["qc", "anagram", "bass"]), "anagram")
+            self.assertEqual(store.load_mode(["anagram", "bass"]), "anagram")     # "qc" removed
+            self.assertEqual(store.load_mode(["bass", "qc"]), None)               # "anagram" removed -> default
+
+            # Old format (index) is still read
+            mc.nvm[0:2] = bytes((0xA7, 1))
+            self.assertEqual(store.load_mode(["qc", "anagram"]), "anagram")
+        finally:
+            del sys.modules["microcontroller"]
+            reload(store)
 
 
 class TestBattery(unittest.TestCase):
