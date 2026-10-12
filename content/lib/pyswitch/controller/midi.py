@@ -9,10 +9,11 @@ from adafruit_midi.control_change import ControlChange
 from adafruit_midi.program_change import ProgramChange
 from adafruit_midi.system_exclusive import SystemExclusive
 #from adafruit_midi.mtc_quarter_frame import MtcQuarterFrame
-#from adafruit_midi.channel_pressure import ChannelPressure
-#from adafruit_midi.note_off import NoteOff
-#from adafruit_midi.note_on import NoteOn
-#from adafruit_midi.pitch_bend import PitchBend
+from adafruit_midi.channel_pressure import ChannelPressure
+from adafruit_midi.note_off import NoteOff
+from adafruit_midi.note_on import NoteOn
+from adafruit_midi.pitch_bend import PitchBend
+from adafruit_midi.polyphonic_key_pressure import PolyphonicKeyPressure
 #from adafruit_midi.timing_clock import TimingClock
 #from adafruit_midi.start import Start
 #from adafruit_midi.stop import Stop
@@ -67,36 +68,44 @@ class MidiController:
             r.target.send(midi_message)
 
     def receive(self):
-        # Process routings without APPLICATION involved 
-        self.__process_external_routings()
+        # Fast raw THRU path for external sources that are not routed to APPLICATION.
+        # This bypasses parse/re-encode overhead for smoother keyboard performance.
+        raw_handled_sources = []
+        for r in self.__routings_external:
+            if r.source in raw_handled_sources:
+                continue
 
-        # Process routings targeting APPLICATION
-        for r in self.__routings_to_appl:
-            msg = r.source.receive()
+            # Keep parsed path when source is also consumed by APPLICATION.
+            source_to_appl = False
+            for ra in self.__routings_to_appl:
+                if ra.source == r.source:
+                    source_to_appl = True
+                    break
 
-            if msg:
-                # Return first message for APPLICATION in the queue (next ticks will deliver the next messages)
-                return msg                
-    
-    # Process all routings where APPLICATION is not involved (this processes one message of each source every time)
-    def __process_external_routings(self):
-        routings = self.__routings_external
-        if not routings:
-            return
-        
-        # Get all sources messages
+            if source_to_appl:
+                continue
+
+            if hasattr(r.source, "thru_raw") and (r.source == r.target or hasattr(r.target, "send_raw")):
+                r.source.thru_raw(r.target)
+                raw_handled_sources.append(r.source)
+
+        # Read each external source only once per cycle, then fan-out to all targets.
+        # This avoids dropping/interleaving messages when the same source is routed both
+        # to APPLICATION and to external THRU targets.
+        external_routings = [x for x in self.__routings_external if x.source not in raw_handled_sources]
+        routings_all = external_routings + self.__routings_to_appl
+
         sources = []
         results = []
-
-        for r in routings:
+        for r in routings_all:
             if r.source in sources:
                 continue
 
             sources.append(r.source)
             results.append(r.source.receive())
-            
-        # Distribute messages
-        for r in routings:
+
+        # Distribute messages to external routings
+        for r in external_routings:
             for i in range(len(sources)):
                 if sources[i] != r.source:
                     continue
@@ -113,5 +122,17 @@ class MidiController:
                     continue
                 
                 r.target.send(msg)
+
+                break
+
+        # Return first queued message for APPLICATION
+        for r in self.__routings_to_appl:
+            for i in range(len(sources)):
+                if sources[i] != r.source:
+                    continue
+
+                msg = results[i]
+                if msg:
+                    return msg
 
                 break

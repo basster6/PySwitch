@@ -12,7 +12,9 @@ Config = {
     # is triggered. If set to 0, only one message is parsed per tick, which leads to 
     # flickering states sometimes. If set too high, switch states will not be read for too long.
     # A good value is the maximum amount of switches. Default is 10.
-    #"maxConsecutiveMidiMessages": 10,
+    # For MIDI keyboard/through use-cases with bursty NOTE streams, a higher
+    # value reduces dropped note-on/note-off pairs.
+    "maxConsecutiveMidiMessages": 64,
 
     # Clear MIDI buffer before starting processing. Default is True.
     #"clearBuffers": True,                 
@@ -31,7 +33,7 @@ Config = {
 
     # Enables file transfer via MIDI from and to the device using PyMidiBridge (https://github.com/Tunetown/PyMidiBridge).
     # This costs about 11kB of RAM, so if you run into memory issues, disable this.
-    "enableMidiBridge": True,
+    "enableMidiBridge": False,
 
     # Globally used dim factors for the DisplayLabels. 
     #"displayDimFactorOn": 1,
