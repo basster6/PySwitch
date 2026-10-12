@@ -7,7 +7,7 @@
 #
 #   python3 multimode/tools/render.py [--device mini6] [--out DIR] [--scale 2]
 #
-# Writes one PNG per scenario plus sheet.png with all of them.
+# Writes one PNG per scenario plus sheet.png with all of them to multimode/screens (not in build/, which mmtool clears).
 #
 ##############################################################################################################################################
 
@@ -203,7 +203,7 @@ def write_metrics(path):
 def main():
     p = argparse.ArgumentParser(description = "Render device screens of the profiles")
     p.add_argument("--device", default = "mini6", choices = list(DEVICES))
-    p.add_argument("--out", default = os.path.join(sim.REPO, "multimode", "build", "screens"))
+    p.add_argument("--out", default = os.path.join(sim.REPO, "multimode", "screens"))
     p.add_argument("--scale", type = int, default = 2)
     p.add_argument("--metrics", action = "store_true", help = "Write tools/font_metrics.json and exit")
     args = p.parse_args()

@@ -80,7 +80,7 @@ python3 -m unittest discover -s multimode/tests
 ```
 
 배치는 `overlay/lib/multimode/devices.py`의 `screen_layout()` 한 곳에서 정의되고, 장치·PC 렌더러·웹 미리보기가 같이 씁니다.
-화면 그림: `python3 multimode/tools/render.py` (Pillow 필요, 장치 폰트로 그림) → `multimode/build/screens/sheet.png`.
+화면 그림: `python3 multimode/tools/render.py` (Pillow 필요, 장치 폰트로 그림) → `multimode/screens/sheet.png`.
 글자 폭 표 `tools/font_metrics.json`(`render.py --metrics`)으로 `validate`와 웹 미리보기가 칸을 넘는 문구를 알려줍니다.
 
 메모리 (Mini 6, CircuitPython 7.3.1, 실행 중 여유 RAM): 이전 화면 50KB, 새 화면 18.5KB (라벨 21개). 표현식은 부팅 때 함수로 컴파일되고 프로필 안의 문자열을 대체해서 메모리를 아낍니다.
