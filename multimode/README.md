@@ -56,7 +56,7 @@ multimode/tests/         프로필 동작 테스트
 
 ```
 python3 multimode/tools/mmtool.py validate     # 모든 기기 × 모든 프로필 검증 (실제 엔진으로 모든 동작 실행)
-python3 multimode/tools/mmtool.py deploy       # 검증 → 장치 백업 → 바뀐 파일만 복사 (--dry-run 가능)
+python3 multimode/tools/mmtool.py deploy       # 검증 → 장치 백업 → 바뀐 파일만 복사 (--dry-run 가능, 장치의 프로필은 --profiles 없이는 유지)
 python3 multimode/tools/mmtool.py backup | restore DIR
 python3 -m unittest discover -s multimode/tests
 ```

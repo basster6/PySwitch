@@ -6,6 +6,7 @@
 #   python3 multimode/tools/mmtool.py validate            Check all profiles on all devices
 #   python3 multimode/tools/mmtool.py build [--out DIR]   Assemble content/ (upstream PySwitch) + multimode/overlay
 #   python3 multimode/tools/mmtool.py deploy [--dry-run]  Validate, build, back up the device, copy changed files
+#                                     [--profiles]        (profiles on the device are kept unless --profiles is given)
 #   python3 multimode/tools/mmtool.py backup              Back up the device drive
 #   python3 multimode/tools/mmtool.py restore DIR         Copy a backup back onto the device
 #   python3 multimode/tools/mmtool.py site [--out DIR]    Build the web editor including firmware files
@@ -224,13 +225,22 @@ def cmd_backup(args):
     return 0
 
 
-def sync(src, volume, dry_run):
+# keep_existing: Paths (prefixes) which are only copied if they do not exist on the device yet
+def sync(src, volume, dry_run, keep_existing = ()):
     changed = []
+    kept = []
     for rel in list_files(src):
         dst = os.path.join(volume, rel)
-        if os.path.isfile(dst) and filecmp.cmp(os.path.join(src, rel), dst, shallow = False):
-            continue
+        if os.path.isfile(dst):
+            if filecmp.cmp(os.path.join(src, rel), dst, shallow = False):
+                continue
+            if rel.startswith(keep_existing):
+                kept.append(rel)
+                continue
         changed.append(rel)
+
+    if kept:
+        print("Kept the device's own version (use --profiles to overwrite): " + ", ".join(kept))
 
     extra = [rel for rel in list_files(volume) if not os.path.exists(os.path.join(src, rel)) and rel != "boot_out.txt"]
 
@@ -268,7 +278,9 @@ def cmd_deploy(args):
     if not args.dry_run:
         print("Backup: " + backup(volume))
 
-    changed = sync(out, volume, args.dry_run)
+    # Profiles are user data (edited in the web editor): never overwrite them unless asked to
+    keep = () if args.profiles else ("profiles" + os.sep,)
+    changed = sync(out, volume, args.dry_run, keep)
     print(("%d file(s) would be copied" if args.dry_run else "%d file(s) copied") % len(changed))
     if changed and not args.dry_run:
         print("Done. Power cycle the device (without holding a switch) to run it.")
@@ -312,6 +324,7 @@ def main():
     s = sub.add_parser("deploy")
     s.add_argument("--device", help = "Override the device in modes.json")
     s.add_argument("--dry-run", action = "store_true")
+    s.add_argument("--profiles", action = "store_true", help = "Also overwrite profiles which exist on the device")
     s.set_defaults(func = cmd_deploy)
 
     s = sub.add_parser("backup")
