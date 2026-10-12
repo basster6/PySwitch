@@ -34,12 +34,14 @@ jobs:
       - name: Validate profiles
         run: python multimode/tools/mmtool.py validate
 
-      - name: PySwitch tests (upstream suite, informational)
-        continue-on-error: true
+      - name: PySwitch tests (upstream suite)
         run: |
-          mkdir -p /tmp/project
+          # Same layout as test/compose.yaml. test/ needs to be a regular package so it is not
+          # shadowed by the standard library's "test" package.
+          mkdir -p /tmp/project/test
+          touch /tmp/project/test/__init__.py
           ln -s "$PWD/content/lib" /tmp/project/lib
-          ln -s "$PWD/test" /tmp/project/test
+          ln -s "$PWD/test/pyswitch" /tmp/project/test/pyswitch
           cd /tmp/project && python -m unittest discover -t /tmp/project -s /tmp/project/test/pyswitch
 
       - name: Build site

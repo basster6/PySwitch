@@ -56,6 +56,11 @@ jobs:
         run: |
           python -m unittest discover -s multimode/tests
           python multimode/tools/mmtool.py validate
+          mkdir -p /tmp/project/test
+          touch /tmp/project/test/__init__.py
+          ln -s "$PWD/content/lib" /tmp/project/lib
+          ln -s "$PWD/test/pyswitch" /tmp/project/test/pyswitch
+          (cd /tmp/project && python -m unittest discover -t /tmp/project -s /tmp/project/test/pyswitch)
 
       - name: Open pull request
         if: steps.fetch.outputs.count != '0' && steps.merge.outputs.conflict == 'false'
