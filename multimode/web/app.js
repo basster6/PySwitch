@@ -675,7 +675,7 @@ function renderInstall() {
 async function serialSend(chunks) {
   if (!("serial" in navigator)) { notice(t("serial.unsupported"), "error"); return false; }
   let port;
-  try { port = await navigator.serial.requestPort(); } catch { return false; }
+  try { port = await navigator.serial.requestPort({ filters: USB_VENDORS.map(usbVendorId => ({ usbVendorId })) }); } catch { return false; }
   await port.open({ baudRate: 115200 });
   const w = port.writable.getWriter();
   const enc = new TextEncoder();
@@ -689,12 +689,16 @@ async function restart() {
   if (await serialSend(["\x03", "\x03", "\x04"])) notice(t("serial.restarted"), "ok");
 }
 
+// USB vendors of the MIDI Captain's serial port: Adafruit (CircuitPython, stock firmware 5.x), Raspberry Pi (other RP2040
+// firmware). The port list then shows only the device.
+const USB_VENDORS = [0x239a, 0x2e8a];
+
 // Opening the serial port at 1200 baud restarts the RP2040 into its bootloader (RPI-RP2 drive). Tested with
 // CircuitPython 7.3.1 and the stock firmware 5.16.
 async function enterBootloader() {
   if (!("serial" in navigator)) { notice(t("serial.unsupported"), "error"); return; }
   let port;
-  try { port = await navigator.serial.requestPort(); } catch { return; }
+  try { port = await navigator.serial.requestPort({ filters: USB_VENDORS.map(usbVendorId => ({ usbVendorId })) }); } catch { return; }
   try {
     await port.open({ baudRate: 1200 });
     await sleep(500);
