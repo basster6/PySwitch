@@ -396,7 +396,12 @@ const D = {
   "inst.s1": { en: "Open the device drive", zh: "打开设备磁盘", ja: "デバイスのドライブを開く", ko: "장치 드라이브 열기" },
   "inst.s1a": { en: "Connect the device by USB, then power it on ", zh: "用 USB 连接电脑，然后", ja: "USB で PC に接続し、", ko: "USB 케이블로 PC에 연결한 뒤, " },
   "inst.s1b": { en: "while holding switch 1 (top left)", zh: "按住 1 号开关（左上）", ja: "スイッチ 1（左上）を押したまま", ko: "1번 스위치(왼쪽 위)를 누른 채" },
-  "inst.s1c": { en: ". A drive named MIDICAPTAIN appears.", zh: "开机。会出现名为 MIDICAPTAIN 的磁盘。", ja: "電源を入れてください。MIDICAPTAIN というドライブが現れます。", ko: " 부팅합니다. MIDICAPTAIN이라는 드라이브가 나타납니다." },
+  "inst.s1c": {
+    en: ". The MIDICAPTAIN or CIRCUITPY drive appears (with the stock firmware 5.x, under the name chosen when it was formatted).",
+    zh: "开机。会出现 MIDICAPTAIN 或 CIRCUITPY 磁盘（原厂固件 5.x 则显示为格式化时设定的名称）。",
+    ja: "電源を入れてください。MIDICAPTAIN または CIRCUITPY ドライブが現れます（純正ファームウェア 5.x では、フォーマット時に付けた名前で表示されます）。",
+    ko: " 부팅합니다. MIDICAPTAIN 또는 CIRCUITPY 드라이브가 나타납니다. 순정 5.x는 포맷할 때 지정한 이름으로 나타납니다.",
+  },
   "inst.s1hint": {
     en: "Needs desktop Chrome or Edge. Select the top folder of the drive and allow editing files.",
     zh: "需要桌面版 Chrome 或 Edge。选择磁盘根目录并允许修改文件。",
