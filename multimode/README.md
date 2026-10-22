@@ -33,15 +33,34 @@ multimode/tests/         프로필 동작 테스트
 
 ## 순정 MIDI Captain에 설치
 
-에디터의 **설치** 탭이 순서대로 안내합니다.
+에디터의 **설치** 탭이 연결한 드라이브를 판별해 순서대로 안내합니다.
 
-1. 1번 스위치를 누른 채 전원을 켜서 MIDICAPTAIN 드라이브를 열고, **장치 드라이브 연결**.
-2. CircuitPython 버전 확인: PySwitch의 `.mpy` 라이브러리는 바이트코드 v5(**CircuitPython 7.x**)라서 7.x만 지원합니다. 8.x 이상이면 7.3.x `.uf2`로 먼저 바꿉니다 (에디터의 시리얼 메뉴로 부트로더 진입·굽기 가능).
-3. **백업**: 장치 전체를 PC 폴더(`midicaptain-backup-…`)로 복사합니다. 순정 펌웨어는 재배포할 수 없으므로 각자 보관해야 하며, 특히 `license` 폴더가 중요합니다.
-4. **설치**: 기존 파일을 지우고(`license` 폴더는 남김) 펌웨어와 프로필을 씁니다.
-5. 드라이브를 꺼내고 스위치를 누르지 않고 다시 켭니다.
+| 연결한 드라이브 | 판별 기준 | 안내 |
+|---|---|---|
+| 순정 1.x, PySwitch | `boot_out.txt`의 CircuitPython 7.x | 백업 후 설치 |
+| CircuitPython만 설치됨 | 예시 `code.py`와 빈 `lib` | 백업 없이 설치 |
+| CircuitPython 8, 9 | `boot_out.txt`의 버전 | 백업, 부트로더 진입, CircuitPython 7.3.1 설치 |
+| 순정 5.x | `boot_out.txt` 없이 `supersetup` 등 설정 폴더 | 부트로더 진입, CircuitPython 7.3.1 설치 |
+| RPI-RP2 | `INFO_UF2.TXT` | CircuitPython 7.3.1 설치 |
 
-되돌리기: 설치 탭의 **백업에서 복원**.
+1. 1번 스위치를 누른 채 부팅해서 MIDICAPTAIN 드라이브를 열고 **장치 드라이브 연결**.
+2. CircuitPython 7.x가 아니면 부트로더로 재시작한 뒤 **CircuitPython 7.3.1 설치**. PySwitch의 `.mpy` 라이브러리는 바이트코드 v5(CircuitPython 7.x)용입니다. 순정 5.x는 CircuitPython이 아니라 Arduino로 빌드한 펌웨어라, 드라이브에 파일을 복사해도 실행되지 않습니다.
+3. **백업**: 장치 전체를 PC 폴더(`midicaptain-backup-…`)로 복사합니다. 순정 1.x는 재배포할 수 없으므로 각자 보관해야 하며, 특히 `license` 폴더가 중요합니다.
+4. **설치**: 기존 파일을 삭제하고(`license` 폴더는 유지) 펌웨어와 프로필을 기록합니다. `code.py`는 마지막에 기록합니다.
+5. 드라이브를 꺼내고 스위치를 누르지 않고 재부팅합니다.
+
+되돌리기: 설치 탭의 **백업에서 복원**. 순정 5.x는 Paint Audio 패키지의 `.uf2`와 설정 파일로 다시 설치합니다.
+
+**부트로더와 CircuitPython**
+
+- 부트로더(RPI-RP2)는 RP2040의 ROM에 있어 바뀌지 않습니다. `.uf2`를 설치하면 플래시의 펌웨어 영역만 교체됩니다.
+- 부트로더 진입은 시리얼 포트를 1200 baud로 열었다 닫는 방식입니다. CircuitPython 7.3.1과 순정 5.16에서 확인했습니다.
+- CircuitPython을 다시 설치해도 CIRCUITPY 드라이브의 파일은 유지됩니다. 순정 5.x에서 넘어오면 빈 CIRCUITPY 드라이브가 생성됩니다.
+- 포함한 CircuitPython은 Adafruit의 `raspberry_pi_pico` 7.3.1(MIT, 순정 1.x와 같은 빌드)입니다. `mmtool.py site`가 내려받아 sha256을 확인합니다.
+
+**수동 설치**: Chrome, Edge가 아니면 설치 탭의 **수동 설치**에서 모델별 ZIP을 내려받아 드라이브 최상위에 복사합니다. 복사한 뒤 Chrome, Edge에서 드라이브를 연결하면 빌드와 다른 파일이 표시됩니다.
+
+**펌웨어 파일 수**: 장치 쓰기가 파일당 수 초씩 걸리므로, multimode가 import하지 않는 PySwitch 파일(Kemper 클라이언트 등)과 화면 배치에 쓰지 않는 폰트는 빌드에서 제외합니다(`mmtool.PRUNE`). `tests/test_build.py`가 남은 파일의 import를 모두 추적해, 제외한 파일이 필요해지면 실패합니다.
 
 ## 웹 에디터
 

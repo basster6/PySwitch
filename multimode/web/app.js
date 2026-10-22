@@ -70,6 +70,8 @@ const S = {
 };
 
 const prof = () => S.profiles[S.mode];
+// "Adafruit CircuitPython 7.3.1 on 2022-06-22; Raspberry Pi Pico with rp2040" -> "CircuitPython 7.3.1"
+const osName = () => S.boot.split(" on ")[0].replace("Adafruit ", "");
 const device = () => DEVICES[S.modes.device] || DEVICES.mini6;
 const deviceKeys = () => device().rows.flat();
 
@@ -205,11 +207,23 @@ async function readBytes(dir, path) {
   catch { return null; }
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Retries once: right after the drive is mounted, the operating system sometimes still holds it. Errors name the file.
+async function retry(path, fn) {
+  try { return await fn(); }
+  catch {
+    await sleep(800);
+    try { return await fn(); } catch (e) { throw new Error(`${path}: ${e.message}`); }
+  }
+}
+
 async function writeFile(dir, path, data) {
-  const fh = await getHandle(dir, path, true);
-  const w = await fh.createWritable();
-  await w.write(data);
-  await w.close();
+  await retry(path, async () => {
+    const w = await (await getHandle(dir, path, true)).createWritable();
+    await w.write(data);
+    await w.close();
+  });
 }
 
 async function sha256(bytes) {
@@ -230,14 +244,21 @@ async function connect() {
 
   const boot = await readText(dir, "boot_out.txt");
   if (!boot || !boot.includes("CircuitPython")) {
-    notice(t("conn.noBootOut"), "error");
+    // No CircuitPython: the bootloader drive, or the stock firmware 5.x (a compiled firmware which only reads settings)
+    const setup = (await readText(dir, "INFO_UF2.TXT")) ? "rp2" : (await isFw5(dir)) ? "fw5" : null;
+    if (!setup) { notice(t("conn.noBootOut"), "error"); return; }
+    Object.assign(S, { dir: null, boot: null, setup, setupDir: dir, view: "install" });
+    notice("");
+    render();
     return;
   }
+  S.setup = null;
+  S.setupDir = null;
   S.dir = dir;
   S.boot = boot.split("\n")[0].trim();
   S.cp = (S.boot.match(/CircuitPython (\d+)\.(\d+)\.?(\d*)/) || []).slice(1).map(Number);
   S.installed = (await readText(dir, "lib/multimode/VERSION"))?.trim() || null;
-  S.kind = S.installed ? "multimode" : (await exists(dir, "lib/pyswitch")) ? "pyswitch" : "other";
+  S.kind = S.installed ? "multimode" : (await exists(dir, "lib/pyswitch")) ? "pyswitch" : (await isEmpty(dir)) ? "empty" : "other";
   S.backup = null;
   S.skipBackup = false;
   S.installDone = false;
@@ -336,18 +357,28 @@ async function save() {
 async function installFirmware(fromWizard = false) {
   if (!S.dir || !S.manifest) return;
   const files = S.manifest.files;
-  let written = 0;
+  const todo = [];
   try {
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       notice(t("fw.checking", { i: i + 1, n: files.length, path: f.path }));
       const cur = await readBytes(S.dir, f.path);
-      if (cur && cur.length === f.size && await sha256(cur) === f.sha256) continue;
+      if (!cur || cur.length !== f.size || await sha256(cur) !== f.sha256) todo.push(f);
+    }
+    // CircuitPython without our boot.py restarts code.py after every write; without a code.py until the end, it
+    // does not run half written firmware during the copy (same as mmtool.sync)
+    if (todo.some(f => f.path === "code.py")) {
+      await S.dir.removeEntry("code.py").catch(() => {});
+      todo.sort((a, b) => (a.path === "code.py") - (b.path === "code.py"));
+    }
+    for (let i = 0; i < todo.length; i++) {
+      const f = todo[i];
+      notice(t("fw.writing", { i: i + 1, n: todo.length, path: f.path }));
       const r = await fetch("firmware/" + f.path, { cache: "no-cache" });
       if (!r.ok) throw new Error(f.path + ": " + r.status);
       await writeFile(S.dir, f.path, new Uint8Array(await r.arrayBuffer()));
-      written++;
     }
+    const written = todo.length;
     if (fromWizard) { S.fwDiff = 0; return; }
     const hasProfiles = await readText(S.dir, "profiles/modes.json");
     if (!hasProfiles) await writeProfiles(S.dir);
@@ -368,15 +399,16 @@ async function checkFirmware() {
   if (!S.dir || !S.manifest || S.kind !== "multimode") return;
   S.fwChecking = true;
   renderSide();
-  let diff = 0;
+  const bad = [];
   for (const f of S.manifest.files) {
     if (f.path === "lib/multimode/VERSION") continue;
     const cur = await readBytes(S.dir, f.path);
-    if (!cur || cur.length !== f.size || await sha256(cur) !== f.sha256) diff++;
+    if (!cur || cur.length !== f.size || await sha256(cur) !== f.sha256) bad.push(f.path);
   }
-  S.fwDiff = diff;
+  S.fwDiff = bad.length;
+  S.fwBad = bad;
   S.fwChecking = false;
-  renderSide();
+  if (S.view === "install") render(); else renderSide();
 }
 
 /* ---------- Install wizard ---------- */
@@ -392,6 +424,27 @@ async function exists(dir, path) {
   for (const part of path.split("/")) {
     try { d = await d.getDirectoryHandle(part); }
     catch { try { await d.getFileHandle(part); return true; } catch { return false; } }
+  }
+  return true;
+}
+
+// Folders of the stock firmware 5.x settings (MIDICAPTAIN drive in its USB setup mode)
+const FW5_ENTRIES = ["supersetup", "kemperLVL1", "kemperLVL3", "timeengine"];
+async function isFw5(dir) {
+  for (const name of FW5_ENTRIES) if (await exists(dir, name)) return true;
+  return false;
+}
+
+// Freshly installed CircuitPython: only its example code.py and an empty lib folder, nothing to back up
+async function isEmpty(dir) {
+  for await (const [name, handle] of dir.entries()) {
+    if (SYSTEM_ENTRIES.has(name) || name.startsWith("._")) continue;
+    if (name === "code.py" && handle.kind === "file" && (await handle.getFile()).size < 100) continue;
+    if (name === "lib" && handle.kind === "directory") {
+      for await (const [n] of handle.entries()) if (!n.startsWith("._")) return false;
+      continue;
+    }
+    return false;
   }
   return true;
 }
@@ -412,15 +465,17 @@ async function copyTree(src, dst, progress, skip = SYSTEM_ENTRIES) {
   return n;
 }
 
-async function backupDevice() {
+// src: the connected CircuitPython drive, or the settings drive of the stock firmware 5.x
+async function backupDevice(src = S.dir) {
   let target;
   try { target = await window.showDirectoryPicker({ id: "mcbackup", mode: "readwrite", startIn: "documents" }); } catch { return; }
   const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "").replace(/^(\d{8})/, "$1-");
   const name = `midicaptain-backup-${stamp}`;
   try {
     const dst = await target.getDirectoryHandle(name, { create: true });
-    await writeFile(dst, "boot_out.txt", (await readText(S.dir, "boot_out.txt")) || "");
-    const n = await copyTree(S.dir, dst, (i, f) => notice(t("inst.backingUp", { i, f })));
+    const boot = await readText(src, "boot_out.txt");
+    if (boot) await writeFile(dst, "boot_out.txt", boot);
+    const n = await copyTree(src, dst, (i, f) => notice(t("inst.backingUp", { i, f })));
     S.backup = { name, files: n };
     notice(t("inst.backedUp", { name, n }), "ok");
   } catch (e) {
@@ -430,18 +485,19 @@ async function backupDevice() {
 }
 
 async function cleanDevice() {
-  const removed = [];
+  const names = [];
   for await (const [name] of S.dir.entries()) {
-    if (SYSTEM_ENTRIES.has(name) || KEEP_ENTRIES.has(name) || name.startsWith("._")) continue;
-    await S.dir.removeEntry(name, { recursive: true });
-    removed.push(name);
+    if (!SYSTEM_ENTRIES.has(name) && !KEEP_ENTRIES.has(name) && !name.startsWith("._")) names.push(name);
   }
-  return removed;
+  for (const name of names) await retry(name, () => S.dir.removeEntry(name, { recursive: true }));
+  return names;
 }
 
 async function runInstall() {
   const clean = $("#instClean")?.checked;
   const dev = $("#instDevice")?.value || S.modes.device;
+  S.installing = true;
+  render();
   try {
     if (clean) {
       notice(t("inst.cleaning"));
@@ -451,12 +507,14 @@ async function runInstall() {
     await installFirmware(true);
     await writeProfiles(S.dir);
     S.kind = "multimode";
+    S.installed = S.manifest.version;
     S.dirty = false;
     S.installDone = true;
     notice(t("inst.done"), "ok");
   } catch (e) {
     notice(t("inst.failed", { e: e.message }), "error");
   }
+  S.installing = false;
   render();
 }
 
@@ -479,60 +537,132 @@ async function restoreBackup() {
   render();
 }
 
+const step = (n, title, state, ...body) => h("section", { class: "step " + state },
+  h("div", { class: "step-no", "aria-hidden": "true" }, state === "done" ? "✓" : String(n)),
+  h("div", { class: "step-body" }, h("h3", {}, title), ...body));
+
+// Bootloader and CircuitPython steps, shared by the stock firmware 5.x, the RPI-RP2 drive and wrong CircuitPython versions
+const bootSteps = (n) => [
+  step(n, t("boot.title"), "todo",
+    h("ol", {}, h("li", {}, t("boot.s1")), h("li", {}, t("boot.s2"))),
+    h("button", { class: "primary", onclick: enterBootloader }, t("serial.uf2")),
+    h("p", { class: "hint" }, t("boot.hint"))),
+  step(n + 1, t("cp.title"), "todo",
+    h("p", {}, t("cp.text")),
+    h("button", { class: "primary", onclick: () => installCircuitPython() }, t("cp.install")),
+    h("p", { class: "hint" }, t("cp.pick"))),
+];
+
+// Manual install for browsers without File System Access, checked afterwards by connecting the drive
+function manualInstall() {
+  const zip = S.manifest?.zips?.[S.modes.device];
+  if (!zip) return null;
+  return h("details", { class: "manual" },
+    h("summary", {}, t("man.title")),
+    h("p", { class: "hint" }, t("man.text")),
+    h("ol", {},
+      h("li", {}, h("a", { href: "firmware/" + zip, download: zip }, t("man.zip", { model: device().title })), t("man.zipNote")),
+      h("li", {}, t("man.s2")),
+      h("li", {}, t("man.s3")),
+      h("li", {}, t("man.s4")),
+      h("li", {}, t("man.s5")),
+      h("li", {}, t("man.s6"))),
+    h("p", { class: "hint" }, t("man.cp"), " ",
+      h("a", { href: S.manifest.circuitpython, download: S.manifest.circuitpython.split("/").pop() }, t("man.cpLink"))));
+}
+
+function renderSetup() {
+  if (S.setup === "rp2") {
+    return [
+      step(1, t("inst.check"), "warn", h("p", {}, t("rp2.found"))),
+      step(2, t("cp.title"), "todo",
+        h("p", {}, t("cp.text")),
+        h("button", { class: "primary", onclick: () => installCircuitPython(S.setupDir) }, t("cp.install"))),
+      step(3, t("cp.afterTitle"), "later", h("p", {}, t("cp.next"))),
+    ];
+  }
+  return [
+    step(1, t("inst.check"), "warn",
+      h("p", {}, t("fw5.found")),
+      h("p", { class: "hint" }, t("fw5.revert"), " ",
+        h("a", { href: "https://paintaudio.com/pages/surports", target: "_blank", rel: "noopener" }, "paintaudio.com")),
+      h("button", { onclick: () => backupDevice(S.setupDir) }, S.backup ? t("inst.backupAgain") : t("fw5.backup")),
+      S.backup ? h("p", { class: "hint" }, t("inst.backupSaved", { name: S.backup.name, n: S.backup.files })) : null),
+    ...bootSteps(2),
+    step(4, t("cp.afterTitle"), "later", h("p", {}, t("cp.next"))),
+  ];
+}
+
 function renderInstall() {
   const v = $("#view-install");
-  const step = (n, title, state, ...body) => h("section", { class: "step " + state },
-    h("div", { class: "step-no", "aria-hidden": "true" }, state === "done" ? "✓" : String(n)),
-    h("div", { class: "step-body" }, h("h3", {}, title), ...body));
+
+  if (S.setup) {
+    v.replaceChildren(h("p", { class: "lead" }, t("inst.lead")), ...renderSetup(), manualInstall() || "");
+    return;
+  }
 
   if (!S.dir) {
-    v.replaceChildren(
+    v.replaceChildren(...[
       h("p", { class: "lead" }, t("inst.lead")),
-      step(1, t("inst.s1"), "todo",
-        h("p", {}, t("inst.s1a"), h("b", {}, t("inst.s1b")), t("inst.s1c")),
-        h("button", { class: "primary", onclick: connect }, t("conn.connect")),
-        h("p", { class: "hint" }, t("inst.s1hint"))));
+      S.cpFlashed
+        ? step(1, t("cp.afterTitle"), "todo", h("p", {}, t("cp.next")), h("button", { class: "primary", onclick: connect }, t("conn.connect")))
+        : step(1, t("inst.s1"), "todo",
+            h("p", {}, t("inst.s1a"), h("b", {}, t("inst.s1b")), t("inst.s1c")),
+            h("button", { class: "primary", onclick: connect }, t("conn.connect")),
+            h("p", { class: "hint" }, t("inst.s1hint"))),
+      manualInstall(),
+    ].filter(Boolean));
     return;
   }
 
   const cpOk = S.cp?.[0] === SUPPORTED_CP;
   const kindText = t("inst.kind." + S.kind);
+  const fwText = S.kind !== "multimode" || !S.manifest ? null
+    : S.fwChecking || S.fwDiff == null ? t("fw.checkingShort")
+    : S.fwDiff === 0 ? t("fw.upToDate")
+    : t("fw.badList", { n: S.fwDiff, list: S.fwBad.slice(0, 5).join(", ") + (S.fwBad.length > 5 ? ", …" : "") });
 
-  const cpBody = cpOk
-    ? [h("p", {}, `${S.boot.replace("Adafruit ", "")} · ${kindText}`)]
-    : [
+  if (!cpOk) {
+    v.replaceChildren(
+      step(1, t("inst.check"), "warn",
         h("p", { class: "err" }, t("inst.cpBad", { v: S.cp.join(".") })),
-        h("ol", {},
-          h("li", {}, t("inst.cp1")),
-          h("li", {}, h("a", { href: "https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/raspberry_pi_pico/en_US/", target: "_blank", rel: "noopener" }, "CircuitPython 7.3.3 (raspberry_pi_pico, en_US) .uf2"), t("inst.cp2")),
-          h("li", {}, t("inst.cp3")),
-          h("li", {}, t("inst.cp4"))),
-      ];
+        h("p", {}, t("inst.cpBackup")),
+        h("button", { onclick: () => backupDevice() }, S.backup ? t("inst.backupAgain") : t("inst.backup")),
+        S.backup ? h("p", { class: "hint" }, t("inst.backupSaved", { name: S.backup.name, n: S.backup.files })) : null),
+      ...bootSteps(2),
+      step(4, t("cp.afterTitle"), "later", h("p", {}, t("cp.next"))));
+    return;
+  }
 
-  const backupDone = !!S.backup;
-  const allowNoBackup = S.kind !== "other";
-  const canInstall = cpOk && (backupDone || (allowNoBackup && S.skipBackup));
+  const backupDone = !!S.backup || S.kind === "empty";
+  const allowNoBackup = S.kind === "pyswitch" || S.kind === "multimode";
+  const canInstall = backupDone || (allowNoBackup && S.skipBackup);
 
   v.replaceChildren(...[
-    step(1, t("inst.check"), cpOk ? "done" : "warn", ...cpBody),
-    step(2, t("inst.s2"), backupDone ? "done" : "todo",
-      h("p", {}, t("inst.s2text")),
-      h("button", { class: backupDone ? "" : "primary", onclick: backupDevice }, backupDone ? t("inst.backupAgain") : t("inst.backup")),
-      backupDone ? h("p", { class: "hint" }, t("inst.backupSaved", { name: S.backup.name, n: S.backup.files })) : null,
-      allowNoBackup && !backupDone ? h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instSkip", checked: !!S.skipBackup, onchange: e => { S.skipBackup = e.target.checked; render(); } }), h("span", {}, t("inst.skip"))) : null),
+    step(1, t("inst.check"), "done",
+      h("p", {}, `${osName()} · ${kindText}`),
+      fwText ? h("p", { class: S.fwDiff > 0 ? "err" : "hint" }, fwText) : null),
+    S.kind === "empty"
+      ? step(2, t("inst.s2"), "done", h("p", {}, t("inst.emptyNoBackup")))
+      : step(2, t("inst.s2"), S.backup ? "done" : "todo",
+          h("p", {}, t("inst.s2text")),
+          h("button", { class: S.backup ? "" : "primary", onclick: () => backupDevice() }, S.backup ? t("inst.backupAgain") : t("inst.backup")),
+          S.backup ? h("p", { class: "hint" }, t("inst.backupSaved", { name: S.backup.name, n: S.backup.files })) : null,
+          allowNoBackup && !S.backup ? h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instSkip", checked: !!S.skipBackup, onchange: e => { S.skipBackup = e.target.checked; render(); } }), h("span", {}, t("inst.skip"))) : null),
     step(3, t("inst.s3"), S.installDone ? "done" : "todo",
       h("label", { class: "field" }, h("span", {}, t("inst.model")),
         h("select", { id: "instDevice" }, ...Object.entries(DEVICES).map(([id, d]) => h("option", { value: id, selected: id === S.modes.device }, d.title)))),
       h("label", { class: "field check" }, h("input", { type: "checkbox", id: "instClean", checked: S.kind !== "multimode" }),
         h("span", {}, t("inst.clean"))),
       h("p", { class: "hint" }, t("inst.writes", { v: S.manifest?.version || "?", n: S.manifest?.files.length || 0, m: S.modes.modes.length, list: S.modes.modes.join(", ") })),
-      h("button", { class: "primary", disabled: !canInstall || !S.manifest, onclick: runInstall }, t("inst.go")),
-      !cpOk ? h("p", { class: "hint" }, t("inst.needCp")) : (!canInstall ? h("p", { class: "hint" }, t("inst.needBackup")) : null)),
+      h("button", { class: "primary", disabled: !canInstall || !S.manifest || S.installing, onclick: runInstall }, S.installing ? t("inst.installing") : t("inst.go")),
+      !canInstall ? h("p", { class: "hint" }, t("inst.needBackup")) : h("p", { class: "hint" }, t("inst.slow"))),
     step(4, t("inst.s4"), S.installDone ? "todo" : "later",
       h("ol", {},
         h("li", {}, t("inst.s4a")),
         h("li", {}, t("inst.s4b1"), h("b", {}, t("inst.s4b2")), t("inst.s4b3")),
         h("li", {}, t("inst.s4c")))),
+    manualInstall(),
     h("section", { class: "restore" },
       h("h3", {}, t("inst.restoreTitle")),
       h("p", { class: "hint" }, t("inst.restoreHint")),
@@ -559,22 +689,47 @@ async function restart() {
   if (await serialSend(["\x03", "\x03", "\x04"])) notice(t("serial.restarted"), "ok");
 }
 
-async function enterUf2() {
-  const cmds = ["\x03", "\x03", "\r", "import microcontroller\r", "microcontroller.on_next_reset(microcontroller.RunMode.UF2)\r", "microcontroller.reset()\r"];
-  if (await serialSend(cmds)) notice(t("serial.uf2Done"), "ok");
+// Opening the serial port at 1200 baud restarts the RP2040 into its bootloader (RPI-RP2 drive). Tested with
+// CircuitPython 7.3.1 and the stock firmware 5.16.
+async function enterBootloader() {
+  if (!("serial" in navigator)) { notice(t("serial.unsupported"), "error"); return; }
+  let port;
+  try { port = await navigator.serial.requestPort(); } catch { return; }
+  try {
+    await port.open({ baudRate: 1200 });
+    await sleep(500);
+    await port.close();
+  } catch { /* the device may already be gone */ }
+  notice(t("serial.uf2Done"), "ok");
 }
 
-async function flashUf2(file) {
-  if (!file) return;
-  let dir;
-  try { dir = await window.showDirectoryPicker({ id: "rpirp2", mode: "readwrite" }); } catch { return; }
-  if (!(await readText(dir, "INFO_UF2.TXT"))) { notice(t("serial.notRp2"), "error"); return; }
+// Writes a UF2 file to the RPI-RP2 drive. dir: the drive, if already selected.
+async function flashUf2(name, data, dir = null) {
+  if (!dir) {
+    try { dir = await window.showDirectoryPicker({ id: "rpirp2", mode: "readwrite" }); } catch { return false; }
+  }
+  if (!(await readText(dir, "INFO_UF2.TXT"))) { notice(t("serial.notRp2"), "error"); return false; }
+  notice(t("serial.flashing"));
   try {
-    await writeFile(dir, file.name, new Uint8Array(await file.arrayBuffer()));
+    const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+    await w.write(data);
+    await w.close();
     notice(t("serial.flashed"), "ok");
   } catch (e) {
-    // The drive disappears as soon as the write completes, which can surface as an error
+    // The bootloader restarts the device as soon as it has received the data, which can surface as an error
     notice(t("serial.flashMaybe", { e: e.message }));
+  }
+  return true;
+}
+
+// Installs the CircuitPython bundled with this site (mmtool.CIRCUITPYTHON)
+async function installCircuitPython(dir = null) {
+  if (!S.manifest?.circuitpython) return;
+  const r = await fetch(S.manifest.circuitpython);
+  if (!r.ok) { notice(t("serial.flashMaybe", { e: r.status }), "error"); return; }
+  if (await flashUf2(S.manifest.circuitpython.split("/").pop(), new Uint8Array(await r.arrayBuffer()), dir)) {
+    Object.assign(S, { setup: null, setupDir: null, dir: null, cpFlashed: true, view: "install" });
+    render();
   }
 }
 
@@ -717,7 +872,7 @@ function renderSide() {
   if (document.activeElement !== $("#batFull")) $("#batFull").value = bat ?? "";
 
   const info = [];
-  if (S.boot) info.push([t("side.os"), S.boot.replace("Adafruit CircuitPython ", "CircuitPython ")]);
+  if (S.boot) info.push([t("side.os"), osName()]);
   if (S.dir) info.push([t("side.installed"), S.installed || t("side.none")]);
   if (S.manifest) info.push([t("side.latest"), S.manifest.version]);
   if (S.dir && S.kind === "multimode" && S.manifest) {
@@ -1124,8 +1279,13 @@ function bind() {
   $("#btnExport").addEventListener("click", exportProfile);
   $("#fileImport").addEventListener("change", e => { importProfile(e.target.files[0]); e.target.value = ""; });
   $("#btnRestart").addEventListener("click", restart);
-  $("#btnUf2").addEventListener("click", enterUf2);
-  $("#fileUf2").addEventListener("change", e => { flashUf2(e.target.files[0]); e.target.value = ""; });
+  $("#btnUf2").addEventListener("click", enterBootloader);
+  $("#btnCp").addEventListener("click", () => installCircuitPython());
+  $("#fileUf2").addEventListener("change", async e => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (f) await flashUf2(f.name, new Uint8Array(await f.arrayBuffer()));
+  });
   $("#batFull").addEventListener("change", e => {
     const v = parseFloat(e.target.value);
     if (v >= 0.2 && v <= 3.3) S.modes.battery = { fullPin: Math.round(v * 1000) / 1000, fullVolts: S.modes.battery?.fullVolts ?? 4.2 };

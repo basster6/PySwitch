@@ -256,6 +256,11 @@ button.primary.dirty { box-shadow: 0 0 0 3px var(--accent-soft); }
 .step-body p, .step-body ol { margin: 0; max-width: 65ch; }
 .step-body ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 .step-body .field { align-self: stretch; max-width: 320px; }
+.manual { padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: 10px; }
+.manual summary { cursor: pointer; font: 700 15px var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+.manual[open] summary { margin-bottom: var(--s2); }
+.manual p, .manual ol { margin: 0 0 var(--s2); max-width: 65ch; }
+.manual ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 .restore { display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start; padding-top: var(--s3); border-top: 1px solid var(--line); }
 a { color: var(--accent); }
 
