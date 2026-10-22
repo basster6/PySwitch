@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zipfile
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(TOOLS, "..", ".."))
@@ -40,6 +41,32 @@ VOLUME_NAMES = ("CIRCUITPY", "MIDICAPTAIN")
 
 # Files from content/ which are part of the device image (the rest is replaced by the overlay)
 CONTENT_ITEMS = ("boot.py", "config.py", "communication.py", "fonts", "lib")
+
+# Files of content/ which multimode never imports (checked by tests/test_build.py). Every file costs seconds when
+# writing to the drive, so these are left out of the device image.
+PRUNE = (
+    "lib/adafruit_hid/",
+    "lib/functools.py",
+    "lib/pyswitch/clients/boomerang/",
+    "lib/pyswitch/clients/kemper/",
+    "lib/pyswitch/clients/local/actions/",
+    "lib/pyswitch/clients/local/mappings/",
+    "lib/pyswitch/controller/actions/AnalogAction.py",
+    "lib/pyswitch/controller/actions/EncoderAction.py",
+    "lib/pyswitch/controller/callbacks/effect_enable.py",
+    "lib/pyswitch/controller/callbacks/parameter_display.py",
+    "lib/pyswitch/controller/preview.py",
+    "lib/pyswitch/controller/strobe.py",
+)
+
+# CircuitPython for the RP2040 of the MIDI Captain (same version as the stock firmware 1.x), bundled with the web
+# editor so it can install it on devices with another firmware (stock firmware 5.x is no CircuitPython)
+CIRCUITPYTHON = {
+    "name": "adafruit-circuitpython-raspberry_pi_pico-en_US-7.3.1.uf2",
+    "url": "https://downloads.circuitpython.org/bin/raspberry_pi_pico/en_US/adafruit-circuitpython-raspberry_pi_pico-en_US-7.3.1.uf2",
+    "sha256": "1f32b7cd998b3375702a1aca19e2c4487ed589f3460d364716748fe88058c84a",
+}
+CACHE = os.path.join(REPO, "multimode", ".cache")
 
 IGNORE = shutil.ignore_patterns("toc.php", "._*", "__pycache__", "*.pyc", ".DS_Store")
 DEVICE_JUNK = ("._", ".fseventsd", ".Trashes", "System Volume Information", ".metadata_never_index", ".DS_Store")
@@ -116,6 +143,20 @@ def build(out, device = None):
                 continue
             shutil.copy2(os.path.join(root, f), os.path.join(out, rel, f))
 
+    for rel in PRUNE:
+        path = os.path.join(out, rel)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        elif os.path.isfile(path):
+            os.remove(path)
+
+    # Only the fonts of the screen layout (multimode.devices)
+    with open(os.path.join(OVERLAY, "lib", "multimode", "devices.py")) as f:
+        fonts = set(os.path.basename(p) for p in re.findall(r'"/fonts/([^"]+)"', f.read()))
+    for name in os.listdir(os.path.join(out, "fonts")):
+        if name.endswith(".pcf") and name not in fonts:
+            os.remove(os.path.join(out, "fonts", name))
+
     split_descriptions(os.path.join(out, "profiles"))
 
     with open(os.path.join(out, "lib", "multimode", "VERSION"), "w") as f:
@@ -176,15 +217,32 @@ def build_site(out):
     with open(os.path.join(fw_build, "lib", "multimode", "VERSION")) as f:
         ver = f.read().strip()
 
+    # Manual install (browsers without File System Access): the device image per device model as ZIP
+    with open(os.path.join(fw_build, "profiles", "modes.json")) as f:
+        modes = json.load(f)
+    sys.path.insert(0, os.path.join(OVERLAY, "lib"))
+    from multimode.devices import DEVICES, screen_layout
+    zips = {}
+    for device in DEVICES:
+        name = "multimode-%s-%s.zip" % (device, ver)
+        with zipfile.ZipFile(os.path.join(out, "firmware", name), "w", zipfile.ZIP_DEFLATED) as z:
+            for rel in list_files(fw_build):
+                if rel == os.path.join("profiles", "modes.json"):
+                    z.writestr("profiles/modes.json", json.dumps(dict(modes, device = device), indent = 2) + "\n")
+                else:
+                    z.write(os.path.join(fw_build, rel), rel.replace(os.sep, "/"))
+        zips[device] = name
+
+    os.makedirs(os.path.join(out, "circuitpython"))
+    shutil.copyfile(circuitpython_uf2(), os.path.join(out, "circuitpython", CIRCUITPYTHON["name"]))
+
     with open(os.path.join(out, "firmware", "manifest.json"), "w") as f:
-        json.dump({"version": ver, "files": files}, f, indent = 1)
+        json.dump({"version": ver, "files": files, "zips": zips, "circuitpython": "circuitpython/" + CIRCUITPYTHON["name"]}, f, indent = 1)
 
     # Font widths for the editor's overflow check
     shutil.copyfile(os.path.join(TOOLS, "font_metrics.json"), os.path.join(out, "fonts.json"))
 
     # Screen layouts of all devices for the editor's preview (same definition as on the device)
-    sys.path.insert(0, os.path.join(OVERLAY, "lib"))
-    from multimode.devices import DEVICES, screen_layout
     with open(os.path.join(out, "layout.json"), "w") as f:
         json.dump({d: screen_layout(d) for d in DEVICES}, f)
 
@@ -192,6 +250,21 @@ def build_site(out):
         json.dump(sorted(n[:-5] for n in os.listdir(os.path.join(out, "profiles")) if n.endswith(".json") and not n.endswith(".desc.json") and n not in ("modes.json", "index.json")), f)
 
     return out
+
+
+# Path of the CircuitPython UF2 (downloaded once into multimode/.cache, checked against the pinned hash)
+def circuitpython_uf2():
+    path = os.path.join(CACHE, CIRCUITPYTHON["name"])
+    if not os.path.isfile(path):
+        import urllib.request
+        os.makedirs(CACHE, exist_ok = True)
+        with urllib.request.urlopen(CIRCUITPYTHON["url"]) as r:
+            data = r.read()
+        if hashlib.sha256(data).hexdigest() != CIRCUITPYTHON["sha256"]:
+            raise RuntimeError("Unexpected hash of " + CIRCUITPYTHON["url"])
+        with open(path, "wb") as f:
+            f.write(data)
+    return path
 
 
 def cmd_site(args):
@@ -298,6 +371,13 @@ def sync(src, volume, dry_run, keep_existing = ()):
         print("Kept the device's own version (use --profiles to overwrite): " + ", ".join(kept))
 
     extra = [rel for rel in list_files(volume) if not os.path.exists(os.path.join(src, rel)) and rel != "boot_out.txt"]
+
+    # With auto-reload on (CircuitPython without our boot.py), every write restarts code.py. Without a code.py
+    # until the end, the device does not run half written firmware during the copy.
+    if "code.py" in changed:
+        changed = [rel for rel in changed if rel != "code.py"] + ["code.py"]
+        if not dry_run and os.path.isfile(os.path.join(volume, "code.py")):
+            os.remove(os.path.join(volume, "code.py"))
 
     for rel in changed:
         print(("would copy " if dry_run else "copy ") + rel)

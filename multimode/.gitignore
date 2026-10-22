@@ -3,3 +3,4 @@ backups/
 site/
 __pycache__/
 screens/
+.cache/
