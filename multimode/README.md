@@ -43,6 +43,8 @@ multimode/tests/         프로필 동작 테스트
 | 순정 5.x | `boot_out.txt` 없이 `supersetup` 등 설정 폴더 | 부트로더 진입, CircuitPython 7.3.1 설치 |
 | RPI-RP2 | `INFO_UF2.TXT` | CircuitPython 7.3.1 설치 |
 
+드라이브 내용만으로는 5.x를 판별할 수 없는 경우가 있습니다. 5.x 드라이브를 비우고 CircuitPython 파일(`boot_out.txt` 포함)을 복사하면 CircuitPython 드라이브처럼 보입니다. 그래서 설치 탭 맨 위에서 사용자가 **현재 펌웨어**를 직접 선택할 수 있고, "순정 펌웨어 5.x"를 선택하면 드라이브 내용과 관계없이 부트로더 진입과 CircuitPython 설치 순서를 안내합니다.
+
 1. 1번 스위치를 누른 채 부팅해서 MIDICAPTAIN 드라이브를 열고 **장치 드라이브 연결**.
 2. CircuitPython 7.x가 아니면 부트로더로 재시작한 뒤 **CircuitPython 7.3.1 설치**. PySwitch의 `.mpy` 라이브러리는 바이트코드 v5(CircuitPython 7.x)용입니다. 순정 5.x는 CircuitPython이 아니라 Arduino로 빌드한 펌웨어라, 드라이브에 파일을 복사해도 실행되지 않습니다.
 3. **백업**: 장치 전체를 PC 폴더(`midicaptain-backup-…`)로 복사합니다. 순정 1.x는 재배포할 수 없으므로 각자 보관해야 하며, 특히 `license` 폴더가 중요합니다.

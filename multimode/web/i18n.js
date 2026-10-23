@@ -600,4 +600,35 @@ const D = {
     ko: "순정 펌웨어 5.x나 CircuitPython 8, 9 기기는 먼저 CircuitPython 7.3.1이 필요합니다. 부트로더로 재시작한 뒤 이 파일을 RPI-RP2 드라이브에 복사합니다:",
   },
   "man.cpLink": { en: "CircuitPython 7.3.1 (.uf2)", zh: "CircuitPython 7.3.1（.uf2）", ja: "CircuitPython 7.3.1（.uf2）", ko: "CircuitPython 7.3.1 (.uf2)" },
+
+  // Bootloader, CircuitPython and manual install
+  "fwc.title": { en: "Current firmware", zh: "当前固件", ja: "現在のファームウェア", ko: "현재 펌웨어" },
+  "fwc.auto": { en: "Not sure", zh: "不确定", ja: "わからない", ko: "모름" },
+  "fwc.autoHint": { en: "Detected when you connect the drive.", zh: "连接磁盘后自动识别。", ja: "ドライブを接続すると自動で判別します。", ko: "드라이브를 연결하면 자동으로 판별합니다." },
+  "fwc.fw5": { en: "Stock firmware 5.x", zh: "原厂固件 5.x", ja: "純正ファームウェア 5.x", ko: "순정 펌웨어 5.x" },
+  "fwc.fw5Hint": {
+    en: "The Paint Audio firmware was updated to 5.0 or later, or the stock screen still shows up after installing.",
+    zh: "Paint Audio 固件已更新到 5.0 或更高版本，或者安装后开机仍显示原厂画面。",
+    ja: "Paint Audio のファームウェアを 5.0 以降に更新した、またはインストール後も純正の画面が表示される。",
+    ko: "Paint Audio 펌웨어를 5.0 이상으로 업데이트했거나, 설치한 뒤에도 순정 화면이 그대로 나오는 경우입니다.",
+  },
+  "fwc.old": {
+    en: "Older stock firmware, PySwitch or multimode",
+    zh: "5.0 之前的原厂固件、PySwitch 或 multimode",
+    ja: "5.0 より前の純正、PySwitch、multimode",
+    ko: "순정 5.0 이전, PySwitch, multimode",
+  },
+  "fwc.oldHint": { en: "Connect the drive and install.", zh: "连接磁盘后直接安装。", ja: "ドライブを接続してそのままインストールします。", ko: "드라이브를 연결해 바로 설치합니다." },
+  "fw5.chosen": {
+    en: "Firmware 5.x is not CircuitPython, so it never runs the files on its drive, even when they look like a CircuitPython installation. Install CircuitPython 7.3.1 first: a new, empty CIRCUITPY drive then takes the place of the stock firmware's drive.",
+    zh: "5.x 不是 CircuitPython，即使磁盘上的文件看起来像 CircuitPython 的安装，它也不会执行。请先安装 CircuitPython 7.3.1，之后会出现一个新的空 CIRCUITPY 磁盘，取代原厂固件的磁盘。",
+    ja: "5.x は CircuitPython ではないため、ドライブに CircuitPython のファイルがあるように見えても実行されません。先に CircuitPython 7.3.1 をインストールしてください。純正ファームウェアのドライブの代わりに、空の CIRCUITPY ドライブが作られます。",
+    ko: "5.x는 CircuitPython이 아니므로, 드라이브에 CircuitPython 파일이 보여도 실행하지 않습니다. 먼저 CircuitPython 7.3.1을 설치해야 하며, 설치하면 순정 펌웨어의 드라이브 대신 비어 있는 CIRCUITPY 드라이브가 생성됩니다.",
+  },
+  "inst.s4d": {
+    en: "If the stock firmware's screen still shows up, choose “Stock firmware 5.x” under “Current firmware” above.",
+    zh: "如果开机后仍显示原厂固件的画面，请在上方“当前固件”中选择“原厂固件 5.x”。",
+    ja: "純正ファームウェアの画面のままの場合は、上の「現在のファームウェア」で「純正ファームウェア 5.x」を選んでください。",
+    ko: "순정 펌웨어 화면이 그대로 나오면, 위의 '현재 펌웨어'에서 '순정 펌웨어 5.x'를 선택합니다.",
+  },
 };

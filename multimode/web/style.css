@@ -252,7 +252,7 @@ button.primary.dirty { box-shadow: 0 0 0 3px var(--accent-soft); }
 .step.warn .step-no { background: var(--danger); color: var(--panel); }
 .step.later { opacity: .6; }
 .step-body { display: flex; flex-direction: column; gap: var(--s2); align-items: flex-start; min-width: 0; }
-.step-body h3, .restore h3 { margin: 0; font: 700 17px var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+.step-body h3, .restore h3 { margin: 0; font: 700 17px var(--f-display); letter-spacing: .02em; }
 .step-body p, .step-body ol { margin: 0; max-width: 65ch; }
 .step-body ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 .step-body .field { align-self: stretch; max-width: 320px; }
@@ -299,3 +299,11 @@ a { color: var(--accent); }
 @media (max-width: 1180px) { .editor { position: static; } }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Current firmware choice (install tab) */
+.choices { display: flex; flex-direction: column; gap: var(--s2); margin: 0; padding: 0; border: 0; min-width: 0; }
+.choices legend { padding: 0; margin-bottom: var(--s2); font: 700 15px var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+.choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s2); align-items: start; padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.choice.sel { border-color: var(--accent); background: var(--panel-2); }
+.choice input { margin-top: 3px; accent-color: var(--accent); }
+.choice > span { display: flex; flex-wrap: wrap; column-gap: var(--s2); row-gap: 2px; align-items: baseline; min-width: 0; }

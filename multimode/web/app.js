@@ -67,6 +67,7 @@ const S = {
   key: null,
   view: "usage",
   dirty: false,
+  fwChoice: "auto",      // current firmware chosen in the install tab: "auto", "fw5" (stock 5.x) or "old"
 };
 
 const prof = () => S.profiles[S.mode];
@@ -254,6 +255,7 @@ async function connect() {
   }
   S.setup = null;
   S.setupDir = null;
+  S.cpFlashed = false;
   S.dir = dir;
   S.boot = boot.split("\n")[0].trim();
   S.cp = (S.boot.match(/CircuitPython (\d+)\.(\d+)\.?(\d*)/) || []).slice(1).map(Number);
@@ -571,6 +573,18 @@ function manualInstall() {
       h("a", { href: S.manifest.circuitpython, download: S.manifest.circuitpython.split("/").pop() }, t("man.cpLink"))));
 }
 
+// The stock firmware 5.x cannot always be detected from the drive (a drive emptied and refilled with CircuitPython
+// files looks like CircuitPython), so the user can also choose it
+function firmwareChoice() {
+  const opt = (value, title, hint) => h("label", { class: "choice" + (S.fwChoice === value ? " sel" : "") },
+    h("input", { type: "radio", name: "fwChoice", value, checked: S.fwChoice === value, onchange: () => { S.fwChoice = value; render(); } }),
+    h("span", {}, h("b", {}, title), h("span", { class: "hint" }, hint)));
+  return h("fieldset", { class: "choices" }, h("legend", {}, t("fwc.title")),
+    opt("auto", t("fwc.auto"), t("fwc.autoHint")),
+    opt("fw5", t("fwc.fw5"), t("fwc.fw5Hint")),
+    opt("old", t("fwc.old"), t("fwc.oldHint")));
+}
+
 function renderSetup() {
   if (S.setup === "rp2") {
     return [
@@ -581,12 +595,13 @@ function renderSetup() {
       step(3, t("cp.afterTitle"), "later", h("p", {}, t("cp.next"))),
     ];
   }
+  const src = S.setupDir || S.dir;
   return [
-    step(1, t("inst.check"), "warn",
-      h("p", {}, t("fw5.found")),
+    step(1, t("fwc.fw5"), "warn",
+      h("p", {}, S.setup === "fw5" ? t("fw5.found") : t("fw5.chosen")),
       h("p", { class: "hint" }, t("fw5.revert"), " ",
         h("a", { href: "https://paintaudio.com/pages/surports", target: "_blank", rel: "noopener" }, "paintaudio.com")),
-      h("button", { onclick: () => backupDevice(S.setupDir) }, S.backup ? t("inst.backupAgain") : t("fw5.backup")),
+      src ? h("button", { onclick: () => backupDevice(src) }, S.backup ? t("inst.backupAgain") : t("fw5.backup")) : null,
       S.backup ? h("p", { class: "hint" }, t("inst.backupSaved", { name: S.backup.name, n: S.backup.files })) : null),
     ...bootSteps(2),
     step(4, t("cp.afterTitle"), "later", h("p", {}, t("cp.next"))),
@@ -596,14 +611,17 @@ function renderSetup() {
 function renderInstall() {
   const v = $("#view-install");
 
-  if (S.setup) {
-    v.replaceChildren(h("p", { class: "lead" }, t("inst.lead")), ...renderSetup(), manualInstall() || "");
+  // A fresh CircuitPython drive proves that CircuitPython runs, whatever was chosen
+  const fw5 = S.setup || (S.fwChoice === "fw5" && !S.cpFlashed && S.kind !== "empty");
+  if (fw5) {
+    v.replaceChildren(...[h("p", { class: "lead" }, t("inst.lead")), firmwareChoice(), ...renderSetup(), manualInstall()].filter(Boolean));
     return;
   }
 
   if (!S.dir) {
     v.replaceChildren(...[
       h("p", { class: "lead" }, t("inst.lead")),
+      firmwareChoice(),
       S.cpFlashed
         ? step(1, t("cp.afterTitle"), "todo", h("p", {}, t("cp.next")), h("button", { class: "primary", onclick: connect }, t("conn.connect")))
         : step(1, t("inst.s1"), "todo",
@@ -624,6 +642,7 @@ function renderInstall() {
 
   if (!cpOk) {
     v.replaceChildren(
+      firmwareChoice(),
       step(1, t("inst.check"), "warn",
         h("p", { class: "err" }, t("inst.cpBad", { v: S.cp.join(".") })),
         h("p", {}, t("inst.cpBackup")),
@@ -639,6 +658,7 @@ function renderInstall() {
   const canInstall = backupDone || (allowNoBackup && S.skipBackup);
 
   v.replaceChildren(...[
+    firmwareChoice(),
     step(1, t("inst.check"), "done",
       h("p", {}, `${osName()} · ${kindText}`),
       fwText ? h("p", { class: S.fwDiff > 0 ? "err" : "hint" }, fwText) : null),
@@ -661,7 +681,8 @@ function renderInstall() {
       h("ol", {},
         h("li", {}, t("inst.s4a")),
         h("li", {}, t("inst.s4b1"), h("b", {}, t("inst.s4b2")), t("inst.s4b3")),
-        h("li", {}, t("inst.s4c")))),
+        h("li", {}, t("inst.s4c")),
+        h("li", {}, t("inst.s4d")))),
     manualInstall(),
     h("section", { class: "restore" },
       h("h3", {}, t("inst.restoreTitle")),
@@ -732,7 +753,7 @@ async function installCircuitPython(dir = null) {
   const r = await fetch(S.manifest.circuitpython);
   if (!r.ok) { notice(t("serial.flashMaybe", { e: r.status }), "error"); return; }
   if (await flashUf2(S.manifest.circuitpython.split("/").pop(), new Uint8Array(await r.arrayBuffer()), dir)) {
-    Object.assign(S, { setup: null, setupDir: null, dir: null, cpFlashed: true, view: "install" });
+    Object.assign(S, { setup: null, setupDir: null, dir: null, kind: null, cpFlashed: true, fwChoice: "auto", view: "install" });
     render();
   }
 }
